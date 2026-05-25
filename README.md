@@ -66,3 +66,7 @@ const firebaseConfig = {
 ## 列印與匯出
 
 補貨參考單／請款單支援瀏覽器列印（已內建 print stylesheet，自動隱藏導覽列、A4 橫向、12mm 邊界）。
+
+## Repository
+
+GitHub (private): <https://github.com/everisematerial888/everise-inventory-v2>

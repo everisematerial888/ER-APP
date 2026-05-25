@@ -24,12 +24,12 @@ import { buildSeedTransactions } from "./src/seed-data.js";
 //  Firebase 設定 — 請貼上您的 Firebase 金鑰
 // ============================================================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MSG_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyCFCc4jgx6Z0eNhdf4HlJ_dpYQJ4XnmNag",
+  authDomain: "stockapp-80774.firebaseapp.com",
+  projectId: "stockapp-80774",
+  storageBucket: "stockapp-80774.firebasestorage.app",
+  messagingSenderId: "154173849409",
+  appId: "1:154173849409:web:f672744777e7eb61276bc0",
 };
 // 偵測 Firebase 是否真的設定 (避免空 config 覆蓋 seed 資料)
 const FIREBASE_CONFIGURED = !String(firebaseConfig.apiKey).startsWith("YOUR_");
