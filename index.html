@@ -346,7 +346,7 @@ const DEFAULT_CLIENT_CONFIG = {
       "2026/2/8":  "ER#660",
       "2026/3/14": "ER#661",
       "2026/4/2":  "ER#662",
-      "2026/5/15": "ER#633"
+      "2026/5/15": "ER#663"
     }
   }
 };
@@ -386,7 +386,7 @@ const MASTER_INVENTORY = [
   { itemName: "300D-1 PVC Flat 0.35MM", color: "Black", out2025: 0, init2026: 3178, out2026: 0, current2026: 3178, safetyLevel: 2500, recommendedRestock: 2500 },
   { itemName: "300D-1 PVC Flat 0.35MM", color: "Navy", out2025: 0, init2026: 1055, out2026: 1500, current2026: -445, safetyLevel: 2000, recommendedRestock: 2000 },
   { itemName: "305", color: "Black", out2025: 0, init2026: 6096, out2026: 560, current2026: 5536, safetyLevel: 2000, recommendedRestock: 2000 },
-  { itemName: "385", color: "Black", out2025: 0, init2026: 1064, out2026: 400, current2026: 664, safetyLevel: 1000, recommendedRestock: 1000 },
+  { itemName: "385", color: "Black", out2025: 0, init2026: 1064, out2026: 400, current2026: 664, safetyLevel: 1000, recommendedRestock: 1000, tag: "PAT" },
   { itemName: "420D PVC Flat", color: "Black", out2025: 0, init2026: 4246, out2026: 0, current2026: 4246, safetyLevel: 5000, recommendedRestock: 5000 },
   { itemName: "420D PVC Flat", color: "Red", out2025: 0, init2026: 1596, out2026: 0, current2026: 1596, safetyLevel: 2000, recommendedRestock: 2000 },
   { itemName: "420D PVC Flat", color: "Navy", out2025: 0, init2026: 1291, out2026: 250, current2026: 1041, safetyLevel: 2000, recommendedRestock: 2000 },
@@ -570,25 +570,34 @@ const MASTER_INVENTORY = [
   { itemName: "600*600D 0.6MM (CSK)", color: "D-Grey", out2025: 0, init2026: 0, out2026: -636, current2026: 636, tag: "CSK" },
   { itemName: "385 (PAT)", color: "Black", out2025: 0, init2026: 2233, out2026: 0, current2026: 2233, tag: "PAT" },
   { itemName: "385 (PAT)", color: "Brown", out2025: 0, init2026: 915, out2026: 0, current2026: 915, tag: "PAT" },
-  { itemName: "CRACK FACE", color: "BLACK", out2025: 0, init2026: 3118, out2026: 480, current2026: 2638, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "CRACK FACE", color: "Coffee", out2025: 0, init2026: 84, out2026: -1636, current2026: 1720, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "CRACK FACE", color: "Tan", out2025: 0, init2026: 20, out2026: -1457, current2026: 1477, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "Kevlar", color: "Black", out2025: 0, init2026: 1381, out2026: 80, current2026: 1301 },
-  { itemName: "Kevlar", color: "Navy", out2025: 0, init2026: 1400, out2026: 0, current2026: 1400 },
-  { itemName: "Lacoste", color: "Black", out2025: 0, init2026: 1590, out2026: 320, current2026: 1270, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "Lacoste", color: "Navy", out2025: 0, init2026: 480, out2026: 0, current2026: 480, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "Lacoste", color: "Coffee", out2025: 0, init2026: 1055, out2026: 0, current2026: 1055, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "VACCUM CHECKER", color: "Black", out2025: 0, init2026: 1679, out2026: 200, current2026: 1479, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "VACCUM CHECKER", color: "Navy", out2025: 0, init2026: 1345, out2026: 120, current2026: 1225, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "VACCUM CHECKER", color: "D-Coffee", out2025: 0, init2026: 1158, out2026: 120, current2026: 1038, safetyLevel: 800, recommendedRestock: 800 },
-  { itemName: "COMPOSITE CLOTH", color: "Black", out2025: 0, init2026: 9782, out2026: 0, current2026: 9782 },
-  { itemName: "COMPOSITE CLOTH", color: "Grey", out2025: 0, init2026: 2099, out2026: 0, current2026: 2099 },
-  { itemName: "COMPOSITE CLOTH", color: "Cream", out2025: 0, init2026: 2127, out2026: 0, current2026: 2127 },
-  { itemName: "COMPOSITE CLOTH", color: "J-Green", out2025: 0, init2026: 5725, out2026: 0, current2026: 5725 },
+  // PAT 客戶專屬 (依使用者手寫筆記：CRACK FACE / KEVLAR / LACOSTE / VACCUM CHECKER / 385 都歸 PAT)
+  { itemName: "CRACK FACE", color: "BLACK", out2025: 0, init2026: 3118, out2026: 480, current2026: 2638, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  { itemName: "CRACK FACE", color: "Coffee", out2025: 0, init2026: 84, out2026: -1636, current2026: 1720, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  { itemName: "CRACK FACE", color: "Tan", out2025: 0, init2026: 20, out2026: -1457, current2026: 1477, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  { itemName: "Kevlar", color: "Black", out2025: 0, init2026: 1381, out2026: 80, current2026: 1301, tag: "PAT" },
+  { itemName: "Kevlar", color: "Navy", out2025: 0, init2026: 1400, out2026: 0, current2026: 1400, tag: "PAT" },
+  { itemName: "Lacoste", color: "Black", out2025: 0, init2026: 1590, out2026: 320, current2026: 1270, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  { itemName: "Lacoste", color: "Navy", out2025: 0, init2026: 480, out2026: 0, current2026: 480, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  { itemName: "Lacoste", color: "Coffee", out2025: 0, init2026: 1055, out2026: 0, current2026: 1055, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  { itemName: "VACCUM CHECKER", color: "Black", out2025: 0, init2026: 1679, out2026: 200, current2026: 1479, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  { itemName: "VACCUM CHECKER", color: "Navy", out2025: 0, init2026: 1345, out2026: 120, current2026: 1225, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  { itemName: "VACCUM CHECKER", color: "D-Coffee", out2025: 0, init2026: 1158, out2026: 120, current2026: 1038, safetyLevel: 800, recommendedRestock: 800, tag: "PAT" },
+  // PMC 客戶專屬 COMPOSITE CLOTH
+  { itemName: "COMPOSITE CLOTH", color: "Black", out2025: 0, init2026: 9782, out2026: 0, current2026: 9782, tag: "PMC" },
+  { itemName: "COMPOSITE CLOTH", color: "Grey", out2025: 0, init2026: 2099, out2026: 0, current2026: 2099, tag: "PMC" },
+  { itemName: "COMPOSITE CLOTH", color: "Cream", out2025: 0, init2026: 2127, out2026: 0, current2026: 2127, tag: "PMC" },
+  { itemName: "COMPOSITE CLOTH", color: "J-Green", out2025: 0, init2026: 5725, out2026: 0, current2026: 5725, tag: "PMC" },
   { itemName: "ORGANZA (SPN)", color: "Black", out2025: 0, init2026: 11911, out2026: 0, current2026: 11911, tag: "SPN" },
   { itemName: "300D PVC 0.5MM (TST)", color: "Black", out2025: 0, init2026: 8877, out2026: 6000, current2026: 2877, safetyLevel: 3000, recommendedRestock: 3000, tag: "TST" },
   { itemName: "600D PVC (VP)", color: "Black", out2025: 0, init2026: 6504, out2026: 1325, current2026: 5179, safetyLevel: 7000, recommendedRestock: 7000, tag: "VP" },
-  { itemName: "600D PVC FLAT (VP)", color: "Black", out2025: 0, init2026: 5157, out2026: 1950, current2026: 3207, tag: "VP" }
+  { itemName: "600D PVC FLAT (VP)", color: "Black", out2025: 0, init2026: 5157, out2026: 1950, current2026: 3207, tag: "VP" },
+  // === 客戶專屬品相（依使用者手寫筆記）===
+  // OC 客戶 — Sandwich Mesh 250G
+  { itemName: "Sandwich Mesh 250G (OC)", color: "Black", out2025: 0, init2026: 0, out2026: 0, current2026: 0, tag: "OC" },
+  // DP 客戶 — Sponge DIOR (DP)
+  { itemName: "Sponge DIOR (DP)", color: "Black", out2025: 0, init2026: 0, out2026: 0, current2026: 0, tag: "DP" },
+  { itemName: "Sponge DIOR (DP)", color: "Red",   out2025: 0, init2026: 0, out2026: 0, current2026: 0, tag: "DP" },
+  { itemName: "Sponge DIOR (DP)", color: "Blue",  out2025: 0, init2026: 0, out2026: 0, current2026: 0, tag: "DP" }
 ];
 
 // ============================================================================
@@ -964,6 +973,35 @@ function normalizeProductName(raw, colorHint, clientHint) {
     if (hasColor) return directMatch.itemName;
     // 名字對但顏色不對 → 不直接認，繼續往下 (給智慧匹配機會找別的品相)
   }
+  // 2b. 寬鬆比對：忽略空格、底線、特殊符號（只保留英數字大寫）
+  //     例：「420DNYLON0.4MM」「420d nylon 0.4mm」「420D_NYLON_0.4MM」→ 全部對到 "420D Nylon 0.4MM"
+  //     這層解決使用者「大小寫/空格」問題自動歸類
+  const simplifyForMatch = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const looseUpper = simplifyForMatch(s);
+  if (looseUpper.length >= 4) {
+    const looseMatches = MASTER_INVENTORY.filter(sku => simplifyForMatch(sku.itemName) === looseUpper);
+    const uniqueNames = [...new Set(looseMatches.map(m => m.itemName))];
+    if (uniqueNames.length === 1) {
+      if (!colorHint) return uniqueNames[0];
+      const colorUpper = String(colorHint).trim().toUpperCase();
+      const hasColor = looseMatches.some(sk => sk.color.toUpperCase() === colorUpper);
+      if (hasColor) return uniqueNames[0];
+      // 顏色對不上 → 繼續落到智慧匹配
+    }
+  }
+  // 3pre. 高信心：raw 簡化型唯一對應到一個 MASTER 品相，且該品相有此顏色 → 直接用
+  //       例：raw "Mesh 250G" → findProductCandidates 唯一指向 "Sandwich Mesh 250G (OC)"
+  //       且該品相有 Black → 用 "Sandwich Mesh 250G (OC)" (不會走到 fuzzy 抹掉 OC tag)
+  if (colorHint) {
+    const colorUpper = String(colorHint).trim().toUpperCase();
+    const nameCandidates = findProductCandidates(s);
+    if (nameCandidates.length === 1) {
+      const c = nameCandidates[0];
+      if (MASTER_INVENTORY.some(sku => sku.itemName === c && sku.color.toUpperCase() === colorUpper)) {
+        return c;
+      }
+    }
+  }
   // 3a. 「600x600 家族」特殊處理：raw 含 "600x600" 或 "600*600" 時，優先用該家族 + 顏色匹配
   //     例："600x600 PVC" + Navy → 600x600D PVC 沒 Navy 但 600*600D 0.6MM (CSK) 有 → CSK
   //     例："600x600 PVC" + Burgundy → 只有 CSK 有 → CSK
@@ -1009,6 +1047,50 @@ function normalizeProductName(raw, colorHint, clientHint) {
   }
   // 4. 找不到就回傳原值
   return s;
+}
+
+// 高信心 normalize — 只走「PAIR mapping / 字典精確 / MASTER 直接 / 寬鬆英數比對」四層
+// 不走 smart match (容易猜錯，例如 C4 + Black 不會被誤導去 385)
+// 用途：待澄清頁面預設 dropdown 選擇 (高信心才預選，否則保留原名給使用者自選)
+function normalizeProductNameHighConfidence(raw, colorHint, clientHint) {
+  let s = cleanString(raw);
+  if (!s) return null;
+  const upper = s.toUpperCase();
+  const colorUpper = colorHint ? String(colorHint).trim().toUpperCase() : '';
+  // 0. PAIR mapping (使用者過去審過完全一樣的 客戶+品名+顏色 → 直接套用，最高信心)
+  if (colorHint && clientHint) {
+    const pairKey = String(clientHint).trim().toUpperCase() + '||' + upper + '||' + colorUpper;
+    const pair = state.userMappings?.pairs?.[pairKey];
+    if (pair && pair.product) return pair.product;
+  }
+  // 1. 字典精確 (且 color 在 MASTER 內有對應)
+  for (const k of Object.keys(PRODUCT_NORMALIZE_MAP)) {
+    if (k.toUpperCase() === upper) {
+      const mapped = PRODUCT_NORMALIZE_MAP[k];
+      if (!colorHint) return mapped;
+      if (MASTER_INVENTORY.some(s => s.itemName === mapped && s.color.toUpperCase() === colorUpper)) return mapped;
+      return null;
+    }
+  }
+  // 2. MASTER 直接
+  const direct = MASTER_INVENTORY.find(sku => sku.itemName.toUpperCase() === upper);
+  if (direct) {
+    if (!colorHint) return direct.itemName;
+    if (MASTER_INVENTORY.some(s => s.itemName === direct.itemName && s.color.toUpperCase() === colorUpper)) return direct.itemName;
+    return null;
+  }
+  // 3. 寬鬆 (英數字大寫比對) — 只接受唯一匹配
+  const simplifyForMatch = x => String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const loose = simplifyForMatch(s);
+  if (loose.length >= 4) {
+    const matches = MASTER_INVENTORY.filter(sku => simplifyForMatch(sku.itemName) === loose);
+    const uniq = [...new Set(matches.map(m => m.itemName))];
+    if (uniq.length === 1) {
+      if (!colorHint) return uniq[0];
+      if (matches.some(sk => sk.color.toUpperCase() === colorUpper)) return uniq[0];
+    }
+  }
+  return null;
 }
 
 // 找出 raw 可能對應到 MASTER_INVENTORY 內哪些品相
@@ -1269,6 +1351,8 @@ function renderSortPicker() {
 // === Render Dispatcher ======================================================
 // ============================================================================
 function render() {
+  // 保留捲動位置 — 避免按 ✓ / 🗑 / ⚡ 後跳回頁首
+  const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
   // tab active state
   $$('#nav-tabs .nav-tab').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
   const main = $('#main');
@@ -1287,7 +1371,10 @@ function render() {
   main.classList.remove('fade-in'); void main.offsetWidth; main.classList.add('fade-in');
   updateSyncDot();
   populateFilters();
-  renderHiddenPdfCaptures();
+  // 注意：renderHiddenPdfCaptures() 從這裡移除 — 它會把所有 invoice 的 HTML 全部產生一遍，
+  // 每次點按鈕都跑會很慢。改成只在按 Batch PDF 時臨時 build。
+  // 還原捲動位置 (用 RAF 確保 DOM 已 layout 完)
+  requestAnimationFrame(() => window.scrollTo(0, scrollY));
 }
 
 function updateSyncDot() {
@@ -1600,9 +1687,16 @@ function getShipmentsFor(itemName, color) {
   const targetColor = String(color || '').trim().toUpperCase();
   return state.masterData.filter(d => {
     if (!isReviewed(d)) return false;
+    if ((d.shippedQty || 0) <= 0) return false;
+    // 1. 優先直接比對 (大小寫無關)。對「使用者新增帶 (TAG) 的 SKU」這層最關鍵 —
+    //    避免 normalize 把 "Sandwich Mesh 250G (OC)" fuzzy 比對成 "SANDWICH MESH 250G" 而不匹配。
+    const dProdUpper = String(d.product || '').trim().toUpperCase();
+    const dColorUpper = String(d.color || '').trim().toUpperCase();
+    if (dProdUpper === targetItem && dColorUpper === targetColor) return true;
+    // 2. 退而求其次：用 normalize 處理大小寫/空格變體
     const normP = normalizeProductName(d.product || '').toUpperCase();
     const normC = normalizeColorName(d.color || '', d.product || '').toUpperCase();
-    return normP === targetItem && normC === targetColor && (d.shippedQty || 0) > 0;
+    return normP === targetItem && normC === targetColor;
   });
 }
 // 只取「從 ER 倉庫實際出貨給客戶」的流水 — 才會扣 ER 庫存
@@ -1704,19 +1798,17 @@ function renderInvL1() {
 }
 
 function renderScopeTabs() {
-  const total = MASTER_INVENTORY.length;
-  const erCount = MASTER_INVENTORY.filter(s => !s.tag).length;
-  const tagCount = (t) => MASTER_INVENTORY.filter(s => s.tag === t).length;
+  // 動態：用 getEffectiveInventory 算 tag 數量 (含使用者新增的 SKU，如 OC、DP)
+  const eff = getEffectiveInventory();
+  const total = eff.length;
+  const erCount = eff.filter(s => !s.tag).length;
+  const tagCount = (t) => eff.filter(s => s.tag === t).length;
+  // 把所有出現過的 tag 收集起來 — 系統 tag (CSK/AP/VP/CH/TST/PAT/SPN) + 使用者自加的 (OC/DP 等)
+  const allTags = [...new Set(eff.map(s => s.tag).filter(Boolean))].sort();
   const scopes = [
     { id: 'ALL', label: `全部 (${total})` },
     { id: 'ER',  label: `ER 倉庫 (${erCount})` },
-    { id: 'CSK', label: `CSK (${tagCount('CSK')})` },
-    { id: 'AP',  label: `AP (${tagCount('AP')})` },
-    { id: 'VP',  label: `VP (${tagCount('VP')})` },
-    { id: 'CH',  label: `CH (${tagCount('CH')})` },
-    { id: 'TST', label: `TST (${tagCount('TST')})` },
-    { id: 'PAT', label: `PAT (${tagCount('PAT')})` },
-    { id: 'SPN', label: `SPN (${tagCount('SPN')})` }
+    ...allTags.map(t => ({ id: t, label: `${t} (${tagCount(t)})` }))
   ];
   return `<div class="crumbs" style="margin-bottom: 14px;">
     ${scopes.map(s => `<span class="crumb ${state.inv.scope === s.id ? 'active' : ''}" data-action="set-scope" data-scope="${s.id}">${s.label}</span>`).join('<span class="crumb-sep">·</span>')}
@@ -2102,10 +2194,14 @@ function renderHiddenPdfCaptures() {
 // ============================================================================
 function renderBossReport() {
   const todayDisplay = `${new Date().getMonth()+1}月${new Date().getDate()}日`;
-  // 預設選 C4 (老闆最關心的)，但 scope 切換或下拉可換
-  const allProducts = [...new Set(MASTER_INVENTORY.map(s => s.itemName))].sort();
+  // 預設選 C4 (老闆最關心的)，但下拉可換為「全部品相」或其他單品
+  // 使用 getEffectiveInventory() 而非 MASTER_INVENTORY，這樣新加的 (OC)/(DP) 等也會出現
+  const eff = getEffectiveInventory();
+  const allProducts = [...new Set(eff.map(s => s.itemName))].sort();
   const focusProduct = state.bossFocus || 'C4';
-  const focusSkus = MASTER_INVENTORY.filter(s => s.itemName === focusProduct);
+  const isAllMode = focusProduct === '__ALL__';
+  // 全部模式：取所有 SKU；單品模式：取該品相所有顏色
+  const focusSkus = isAllMode ? eff : eff.filter(s => s.itemName === focusProduct);
   if (!focusSkus.length) { state.bossFocus = allProducts[0]; return renderBossReport(); }
 
   // 計算每個顏色的數據 (剩餘以 CSV current2026 為主)
@@ -2124,6 +2220,7 @@ function renderBossReport() {
     const needRestock = current < restockStandard;
     return {
       idx: idx + 1,
+      product: sku.itemName, // 全部模式下用來顯示哪個品相
       color: sku.color,
       restockStandard,
       out2025,
@@ -2151,6 +2248,8 @@ function renderBossReport() {
     <div style="display:flex; gap:8px; margin-bottom: 16px; flex-wrap:wrap; align-items:center;">
       <span style="font-size:11px; color:var(--text-4); text-transform:uppercase; font-weight:600;">焦點品相</span>
       <select id="boss-focus" style="border:1px solid var(--line-strong); border-radius:6px; padding:5px 10px; font-size:13px; font-weight:600;">
+        <option value="__ALL__" ${isAllMode ? 'selected' : ''}>📋 全部品相 (總覽)</option>
+        <option disabled>──────────</option>
         ${allProducts.map(p => `<option value="${escAttr(p)}" ${p === focusProduct ? 'selected' : ''}>${escHtml(p)}</option>`).join('')}
       </select>
       <span style="margin-left:auto; display:flex; gap:8px;">
@@ -2166,13 +2265,14 @@ function renderBossReport() {
     </div>
     <div class="card">
       <div class="card-hdr">
-        <span>${escHtml(focusProduct)} · 補貨參考單 · ${todayDisplay}${state.bossFilter ? ` <span style="color:var(--warn-text); font-size:11px;">(已篩選: ${ {neg:'負庫存', need:'需補貨', deficit:'有缺口'}[state.bossFilter] || state.bossFilter})</span>` : ''}</span>
+        <span>${isAllMode ? '全部品相總覽' : escHtml(focusProduct)} · 補貨參考單 · ${todayDisplay}${state.bossFilter ? ` <span style="color:var(--warn-text); font-size:11px;">(已篩選: ${ {neg:'負庫存', need:'需補貨', deficit:'有缺口'}[state.bossFilter] || state.bossFilter})</span>` : ''}</span>
         <span style="font-size:11px; color:var(--text-4);">紅字 = 庫存低於補貨標準</span>
       </div>
       <div style="overflow:auto;">
         <table>
           <thead><tr>
             <th style="width:36px;">#</th>
+            ${isAllMode ? '<th>品相 Product</th>' : ''}
             <th>顏色 Color</th>
             <th class="text-right">補貨標準</th>
             <th class="text-right">2025 出貨</th>
@@ -2183,8 +2283,9 @@ function renderBossReport() {
             <th class="text-center">標記</th>
           </tr></thead>
           <tbody>
-            ${displayRows.length === 0 ? `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--text-4);">沒有符合篩選條件的顏色</td></tr>` : displayRows.map(r => `<tr ${r.needRestock ? 'style="background:var(--warn-bg);"' : ''}>
+            ${displayRows.length === 0 ? `<tr><td colspan="${isAllMode ? 10 : 9}" style="text-align:center; padding:24px; color:var(--text-4);">沒有符合篩選條件的顏色</td></tr>` : displayRows.map(r => `<tr ${r.needRestock ? 'style="background:var(--warn-bg);"' : ''}>
               <td class="mono" style="color:var(--text-4);">${r.idx}</td>
+              ${isAllMode ? `<td class="mono" style="font-size:11px;">${escHtml(r.product)}</td>` : ''}
               <td><strong>${escHtml(r.color)}</strong></td>
               <td class="text-right mono" style="color:var(--text-3);">${fmtInt(r.restockStandard)}</td>
               <td class="text-right mono" style="color:var(--text-3);">${fmtInt(r.out2025)}</td>
@@ -2197,7 +2298,7 @@ function renderBossReport() {
           </tbody>
           <tfoot>
             <tr style="background:var(--bg); border-top: 2px solid var(--text);">
-              <td colspan="3" style="font-weight:700;">TOTAL${state.bossFilter ? ' (已篩選)' : ''}</td>
+              <td colspan="${isAllMode ? 4 : 3}" style="font-weight:700;">TOTAL${state.bossFilter ? ' (已篩選)' : ''}</td>
               <td class="text-right mono" style="font-weight:700;">${fmtInt(displayRows.reduce((s,r)=>s+r.out2025,0))}</td>
               <td class="text-right mono" style="font-weight:700;">${fmtInt(displayRows.reduce((s,r)=>s+r.out2026,0))}</td>
               <td class="text-right mono" style="font-weight:700;">${fmtInt(displayRows.reduce((s,r)=>s+r.stock2026,0))}</td>
@@ -2217,51 +2318,40 @@ function renderBossReport() {
 // 真正不認識的 → 出現在這裡
 // ============================================================================
 function renderNeedsReview() {
-  // 新版審核制：列出 reviewed=false 且「會影響 ER 庫存」的列 (即非直送列)
-  // 直送列 (kind=direct) 不該出現在這頁 — 它們不影響庫存，用按鈕一鍵批次審核即可
-  const unreviewedRows = state.masterData.filter(d => {
-    if (isReviewed(d)) return false;
-    const k = d.kind || parseClientCell(d.client).kind;
-    if (k === 'direct') return false; // 直送不需要逐筆審
-    return true;
-  });
+  // 列出所有 reviewed=false 的列。包括：
+  // - ER 倉庫進貨/出貨列 (要逐筆審)
+  // - 直送列 (通常匯入時自動審，但若使用者誤按「退回待澄清」也會出現在這頁可恢復)
+  const unreviewedRows = state.masterData.filter(d => !isReviewed(d));
   const issues = unreviewedRows.map(d => ({
     ...d,
     rawProduct: d.rawProduct || d.product || '',
     rawColor: d.rawColor || d.color || ''
   }));
 
-  // 依 (客戶 + rawProduct + rawColor) 分組 — 同客戶相同拼法批次審核
-  const grouped = {};
+  // 排序：rawProduct → rawColor → client → 日期，讓拼法相同的列彼此相鄰，方便對照
+  issues.sort((a, b) => {
+    const pa = (a.rawProduct || '').toUpperCase();
+    const pb = (b.rawProduct || '').toUpperCase();
+    if (pa !== pb) return pa.localeCompare(pb);
+    const ca = (a.rawColor || '').toUpperCase();
+    const cb = (b.rawColor || '').toUpperCase();
+    if (ca !== cb) return ca.localeCompare(cb);
+    const cla = (a.client || '');
+    const clb = (b.client || '');
+    if (cla !== clb) return cla.localeCompare(clb);
+    return dateToSortable(a.date) - dateToSortable(b.date);
+  });
+
+  // 統計同 (rawProduct + rawColor) 出現幾筆 — 用於「批次套用」按鈕
+  const countByRaw = {};
   issues.forEach(it => {
-    const client = it.client || '?';
-    const key = `${client}|||${it.rawProduct || '?'}||${it.rawColor || '?'}`;
-    if (!grouped[key]) grouped[key] = {
-      client,
-      rawProduct: it.rawProduct,
-      rawColor: it.rawColor,
-      sources: new Set(),
-      count: 0,
-      totalQty: 0,
-      sampleDates: new Set(),
-      ids: []
-    };
-    const g = grouped[key];
-    g.sources.add(it.source || '');
-    g.count++;
-    g.totalQty += (it.shippedQty || 0);
-    if (it.date) g.sampleDates.add(it.date);
-    g.ids.push(it.id);
+    const key = `${(it.rawProduct || '').toUpperCase()}||${(it.rawColor || '').toUpperCase()}`;
+    countByRaw[key] = (countByRaw[key] || 0) + 1;
   });
 
-  const groups = Object.entries(grouped).sort((a,b) => {
-    if (a[1].client !== b[1].client) return a[1].client.localeCompare(b[1].client);
-    return b[1].count - a[1].count;
-  });
+  $('#filter-count').textContent = `${issues.length} 筆未審核`;
 
-  $('#filter-count').textContent = `${issues.length} 筆未審核 · ${groups.length} 個 (客戶+拼法) 組合`;
-
-  if (groups.length === 0) {
+  if (issues.length === 0) {
     return `<h2>🔍 待澄清 Needs Review</h2>
       <div class="card" style="padding:60px; text-align:center; color:var(--text-3);">
         ✓ 目前沒有待審核的列。所有匯入資料都已通過審核。<br><br>
@@ -2276,14 +2366,17 @@ function renderNeedsReview() {
     colorsByProduct[s.itemName].add(s.color);
   });
 
-  return `<h2>🔍 待澄清 (${issues.length} 筆未審核 / ${groups.length} 組)</h2>
+  // 用於畫「同拼法群組」之間的分隔線
+  let lastRawKey = null;
+
+  return `<h2>🔍 待澄清 (${issues.length} 筆未審核)</h2>
     <div style="background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:8px; padding:12px 16px; margin-bottom:14px; font-size:12px; color:var(--text-2); line-height:1.7;">
-      <strong>📋 審核制流程</strong>：新匯入 CSV 的列都標「未審核」，<strong>不會扣庫存、不會出現在請款單</strong>。<br>
-      你在這頁逐組確認系統猜的對不對，按 <strong>✓ 同意</strong> 後該組列才會：① 扣庫存 (如果是 ER 進貨) ② 進請款單 (如果是直送客戶)。<br>
-      <strong>客戶 + 品名 + 顏色三者完全一樣才會自動記成 PAIR mapping</strong>，下次同樣的列不會再煩你。
+      <strong>📋 審核制流程</strong>：每一筆都獨立列出，可以看到日期、客戶、櫃號，方便對照。<br>
+      按 <strong>✓</strong> 同意該筆 → 進庫存/請款單。如果你改了 mapping 並按 ⚡，會套用到所有同拼法的列，省時間。<br>
+      系統會自動記成 <strong>(客戶+品名+顏色) PAIR mapping</strong>，下次同樣 CSV 不會再進待澄清。
     </div>
     <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
-      <span style="font-size:12px; color:var(--text-3);">本頁顯示 ${groups.length} 組 ER 相關 (要你逐筆審)${(() => {
+      <span style="font-size:12px; color:var(--text-3);">本頁顯示 ${issues.length} 筆 ER 相關 (要你逐筆審)${(() => {
         const pendingDirect = state.masterData.filter(d => {
           if (isReviewed(d)) return false;
           const k = d.kind || parseClientCell(d.client).kind;
@@ -2299,48 +2392,67 @@ function renderNeedsReview() {
     <div class="card">
       <table>
         <thead><tr>
+          <th style="width:90px;">日期</th>
           <th>客戶</th>
+          <th style="width:90px;">櫃號/單號</th>
           <th>CSV 品名</th>
           <th>CSV 顏色</th>
-          <th class="text-right">筆數</th>
-          <th class="text-right">碼數</th>
+          <th class="text-right" style="width:70px;">碼數</th>
           <th style="min-width:170px;">→ 對到品名</th>
           <th style="min-width:170px;">→ 對到顏色</th>
-          <th style="width:100px;">動作</th>
+          <th style="width:120px;">動作</th>
         </tr></thead>
         <tbody>
-          ${groups.map(([k, g], gi) => {
-            const predicted = normalizeProductName(g.rawProduct, g.rawColor, g.client);
-            const predictedColor = normalizeColorName(g.rawColor, predicted, g.client);
+          ${issues.map((it) => {
+            // 高信心預測 — 只在「PAIR mapping / 字典精確 / MASTER 直接 / 寬鬆英數比對唯一匹配」時才回傳
+            // smart match 的猜測（可能把 C4 誤判成 385）不會在這裡預選，保留 __KEEP__ 給使用者選
+            const highConfPredict = normalizeProductNameHighConfidence(it.rawProduct, it.rawColor, it.client);
+            const predicted = highConfPredict || it.rawProduct; // 顯示用 (沒高信心 → 用 raw)
+            const shouldPreselectPredict = !!highConfPredict; // 是否預選 dropdown
+            const predictedColor = highConfPredict ? normalizeColorName(it.rawColor, predicted, it.client) : it.rawColor;
+            const shouldPreselectColor = !!highConfPredict && (predictedColor || '').toUpperCase() !== (it.rawColor || '').toUpperCase();
             const candidateColors = colorsByProduct[predicted] ? [...colorsByProduct[predicted]].sort() : [];
-            const parsed = parseClientCell(g.client);
-            const tagBadge = parsed.kind === 'direct' ? '<span class="tag tag-cn" style="font-size:10px; margin-left:4px;">直送</span>' :
-                              parsed.kind === 'warehouse' ? '<span class="tag tag-er" style="font-size:10px; margin-left:4px;">ER</span>' :
-                              parsed.kind === 'warehouse-tagged' ? `<span class="tag tag-warn" style="font-size:10px; margin-left:4px;">ER(${parsed.stockTag})</span>` :
+            // 優先用儲存的 kind / stockTag（匯入時已決定）— 不要重新 parseClientCell 客戶字串
+            // 避免把 "ER" (含空格、不同大小寫) 誤判成直送
+            const storedKind = it.kind || parseClientCell(it.client).kind;
+            const storedStockTag = it.stockTag || parseClientCell(it.client).stockTag;
+            const tagBadge = storedKind === 'direct' ? '<span class="tag tag-cn" style="font-size:10px; margin-left:4px;">直送</span>' :
+                              storedKind === 'warehouse' ? '<span class="tag tag-er" style="font-size:10px; margin-left:4px;">ER</span>' :
+                              storedKind === 'warehouse-tagged' ? `<span class="tag tag-warn" style="font-size:10px; margin-left:4px;">ER(${storedStockTag || '?'})</span>` :
                               '';
-            return `<tr data-group-key="${escAttr(k)}">
-              <td><strong>${escHtml(g.client)}</strong>${tagBadge}</td>
-              <td class="mono" style="font-weight:600;">${escHtml(g.rawProduct || '(空白)')}</td>
-              <td class="mono">${escHtml(g.rawColor || '(空白)')}</td>
-              <td class="text-right mono">${g.count}</td>
-              <td class="text-right mono">${fmtInt(g.totalQty)}</td>
+            const rawKey = `${(it.rawProduct || '').toUpperCase()}||${(it.rawColor || '').toUpperCase()}`;
+            const isFirstOfGroup = rawKey !== lastRawKey;
+            const groupCount = countByRaw[rawKey] || 1;
+            lastRawKey = rawKey;
+            const sepStyle = isFirstOfGroup ? 'border-top: 2px solid var(--line-strong);' : '';
+            const cabinDisp = (it.cabinetNo && !['N/A','n/a','-','—'].includes((it.cabinetNo || '').trim())) ? it.cabinetNo : (it.orderNo || '—');
+            return `<tr data-row-id="${escAttr(it.id)}" style="${sepStyle}">
+              <td class="mono" style="font-size:11px; color:var(--text-3);">${escHtml(it.date || '-')}</td>
+              <td><strong>${escHtml(it.client || '?')}</strong>${tagBadge}</td>
+              <td class="mono" style="font-size:11px;">${escHtml(cabinDisp)}</td>
+              <td class="mono" style="font-weight:600;">${escHtml(it.rawProduct || '(空白)')}</td>
+              <td class="mono">${escHtml(it.rawColor || '(空白)')}</td>
+              <td class="text-right mono">${fmtInt(it.shippedQty || 0)}</td>
               <td>
-                <select class="review-product-pick" data-gi="${gi}" style="width:100%; padding:4px 6px; border:1px solid var(--line-strong); border-radius:5px; font-size:11px;">
-                  <option value="__KEEP__" style="color:var(--text-2);">✓ 保留原名 (${escHtml(g.rawProduct || '空')})</option>
+                <select class="review-product-pick" data-row-id="${escAttr(it.id)}" style="width:100%; padding:4px 6px; border:1px solid var(--line-strong); border-radius:5px; font-size:11px;">
+                  <option value="__KEEP__" ${!shouldPreselectPredict ? 'selected' : ''} style="color:var(--text-2);">✓ 保留原名 (${escHtml(it.rawProduct || '空')})</option>
+                  <option value="__CUSTOM__" style="color:var(--info-text); font-weight:600;">✏️ 自訂新品相...</option>
                   <option disabled>──────────</option>
-                  ${allProducts.map(p => `<option value="${escAttr(p)}" ${p === predicted ? 'selected' : ''}>${escHtml(p)}</option>`).join('')}
+                  ${allProducts.map(p => `<option value="${escAttr(p)}" ${shouldPreselectPredict && p === predicted ? 'selected' : ''}>${escHtml(p)}</option>`).join('')}
                 </select>
               </td>
               <td>
-                <select class="review-color-pick" data-gi="${gi}" style="width:100%; padding:4px 6px; border:1px solid var(--line-strong); border-radius:5px; font-size:11px;">
-                  <option value="__KEEP__" style="color:var(--text-2);">✓ 保留原色 (${escHtml(g.rawColor || '空')})</option>
+                <select class="review-color-pick" data-row-id="${escAttr(it.id)}" style="width:100%; padding:4px 6px; border:1px solid var(--line-strong); border-radius:5px; font-size:11px;">
+                  <option value="__KEEP__" ${!shouldPreselectColor ? 'selected' : ''} style="color:var(--text-2);">✓ 保留原色 (${escHtml(it.rawColor || '空')})</option>
+                  <option value="__CUSTOM__" style="color:var(--info-text); font-weight:600;">✏️ 自訂新顏色...</option>
                   ${candidateColors.length ? `<option disabled>── ${escHtml(predicted)} 內既有顏色 ──</option>` : ''}
-                  ${candidateColors.map(c => `<option value="${escAttr(c)}" ${c === predictedColor ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
+                  ${candidateColors.map(c => `<option value="${escAttr(c)}" ${shouldPreselectColor && c === predictedColor ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
                 </select>
               </td>
               <td style="white-space:nowrap;">
-                <button class="btn btn-primary" data-action="approve-group" data-key="${escAttr(k)}" style="padding:4px 10px; font-size:11px;">✓ 同意</button>
-                <button class="btn-ghost btn-icon" data-action="skip-group" data-key="${escAttr(k)}" title="跳過 (整組刪掉)" style="padding:4px;">🗑</button>
+                <button class="btn btn-primary" data-action="approve-row" data-id="${escAttr(it.id)}" style="padding:4px 8px; font-size:11px;" title="只審核這一筆">✓</button>
+                ${groupCount > 1 ? `<button class="btn btn-secondary" data-action="approve-batch-by-raw" data-id="${escAttr(it.id)}" style="padding:4px 8px; font-size:11px;" title="套用這個 mapping 到所有 ${groupCount} 筆同拼法的列">⚡${groupCount}</button>` : ''}
+                <button class="btn-ghost btn-icon" data-action="skip-row" data-id="${escAttr(it.id)}" title="跳過 (刪掉這筆)" style="padding:4px;">🗑</button>
               </td>
             </tr>`;
           }).join('')}
@@ -2392,6 +2504,122 @@ async function approveGroup(groupKey) {
       state.userMappings.pairs = newPairs;
     }
   } catch (e) { alert('審核失敗：' + e.message); }
+}
+
+// 審核單列 — 只更新這一筆 + 若改了 mapping 記成 PAIR
+// 效能：不跑 full render()，直接從 DOM 移除該列。等下次自然 render 時內容會同步。
+async function approveRow(rowId) {
+  const row = state.masterData.find(d => d.id === rowId);
+  if (!row) { alert('找不到該列'); return; }
+  const tr = document.querySelector(`tr[data-row-id="${CSS.escape(rowId)}"]`);
+  if (!tr) { alert('找不到該列畫面元素'); return; }
+  const productSel = tr.querySelector('.review-product-pick');
+  const colorSel = tr.querySelector('.review-color-pick');
+  const productPick = productSel?.value;
+  const colorPick = colorSel?.value;
+  const rawProduct = row.rawProduct || row.product || '';
+  const rawColor = row.rawColor || row.color || '';
+  const targetProduct = (productPick === '__KEEP__') ? rawProduct : productPick;
+  const targetColor = (colorPick === '__KEEP__') ? rawColor : colorPick;
+  // 1. 立即更新本地 state (但不 render — 太慢)
+  const idx = state.masterData.findIndex(d => d.id === rowId);
+  if (idx >= 0) {
+    state.masterData[idx] = { ...state.masterData[idx], reviewed: true, product: targetProduct, color: targetColor };
+  }
+  // 2. 即時把 DOM 那一列移除 (淡出動畫) — 比 full render 快 100 倍
+  tr.style.transition = 'opacity 0.18s, transform 0.18s';
+  tr.style.opacity = '0';
+  tr.style.transform = 'translateX(8px)';
+  setTimeout(() => tr.remove(), 180);
+  // 3. 背景：寫入 Firestore + PAIR mapping
+  try {
+    await updateDoc(doc(db, ...ROOT, 'master_data', rowId), {
+      reviewed: true,
+      product: targetProduct,
+      color: targetColor
+    });
+    if (productPick !== '__KEEP__' || colorPick !== '__KEEP__') {
+      const newPairs = { ...(state.userMappings?.pairs || {}) };
+      const pairKey = (row.client || '').toUpperCase() + '||' + rawProduct.toUpperCase() + '||' + rawColor.toUpperCase();
+      newPairs[pairKey] = { product: targetProduct, color: targetColor };
+      await setDoc(doc(db, ...ROOT, 'settings', 'userMappings'), { pairs: newPairs }, { merge: true });
+      state.userMappings.pairs = newPairs;
+    }
+  } catch (e) {
+    alert('審核失敗：' + e.message);
+    // 失敗 → 回滾本地狀態 + 重新 render 把列補回
+    if (idx >= 0) state.masterData[idx] = { ...row };
+    render();
+  }
+}
+
+// 套用本列 mapping 到「所有同 (rawProduct + rawColor) 的未審列」— 跨客戶
+async function approveBatchByRaw(rowId) {
+  const row = state.masterData.find(d => d.id === rowId);
+  if (!row) { alert('找不到該列'); return; }
+  const tr = document.querySelector(`tr[data-row-id="${CSS.escape(rowId)}"]`);
+  if (!tr) { alert('找不到該列畫面元素'); return; }
+  const productSel = tr.querySelector('.review-product-pick');
+  const colorSel = tr.querySelector('.review-color-pick');
+  const productPick = productSel?.value;
+  const colorPick = colorSel?.value;
+  const rawProduct = row.rawProduct || row.product || '';
+  const rawColor = row.rawColor || row.color || '';
+  const targetProduct = (productPick === '__KEEP__') ? rawProduct : productPick;
+  const targetColor = (colorPick === '__KEEP__') ? rawColor : colorPick;
+  const matching = state.masterData.filter(d => {
+    if (isReviewed(d)) return false;
+    const k = d.kind || parseClientCell(d.client).kind;
+    if (k === 'direct') return false;
+    return (d.rawProduct || d.product || '').toUpperCase() === rawProduct.toUpperCase() &&
+           (d.rawColor || d.color || '').toUpperCase() === rawColor.toUpperCase();
+  });
+  if (!matching.length) { alert('找不到同拼法的未審核列'); return; }
+  if (!confirm(`把這個 mapping (${rawProduct}/${rawColor} → ${targetProduct}/${targetColor}) 套用到所有 ${matching.length} 筆同拼法的列？`)) return;
+  try {
+    // Firestore 一次最多 500 個操作，分批 commit
+    const allClients = new Set();
+    for (let i = 0; i < matching.length; i += 400) {
+      const batch = writeBatch(db);
+      matching.slice(i, i + 400).forEach(d => {
+        batch.update(doc(db, ...ROOT, 'master_data', d.id), {
+          reviewed: true,
+          product: targetProduct,
+          color: targetColor
+        });
+        allClients.add(d.client || '');
+      });
+      await batch.commit();
+    }
+    // 若改了 mapping，幫每個出現過的客戶都記成 PAIR mapping
+    if (productPick !== '__KEEP__' || colorPick !== '__KEEP__') {
+      const newPairs = { ...(state.userMappings?.pairs || {}) };
+      allClients.forEach(cli => {
+        const pairKey = cli.toUpperCase() + '||' + rawProduct.toUpperCase() + '||' + rawColor.toUpperCase();
+        newPairs[pairKey] = { product: targetProduct, color: targetColor };
+      });
+      await setDoc(doc(db, ...ROOT, 'settings', 'userMappings'), { pairs: newPairs }, { merge: true });
+      state.userMappings.pairs = newPairs;
+    }
+  } catch (e) { alert('批次審核失敗：' + e.message); }
+}
+
+// 跳過單列 — 直接刪除
+async function skipRow(rowId) {
+  if (!confirm('跳過這一筆？\n會永久刪除。')) return;
+  // 樂觀更新：立即從本地 state 移除
+  const idx = state.masterData.findIndex(d => d.id === rowId);
+  const removed = idx >= 0 ? state.masterData[idx] : null;
+  if (idx >= 0) {
+    state.masterData.splice(idx, 1);
+    render();
+  }
+  try {
+    await deleteDoc(doc(db, ...ROOT, 'master_data', rowId));
+  } catch (e) {
+    alert('刪除失敗：' + e.message);
+    if (removed) { state.masterData.splice(idx, 0, removed); render(); }
+  }
 }
 
 // 跳過某組 — 整組刪除
@@ -2859,12 +3087,12 @@ async function writeStagedRows(stagedRows, filename) {
   let writtenCount = 0, dedupedCount = 0;
   const promises = stagedRows.map(r => {
     if (skipSet.has(r.rIdx)) return null;
-    // 直送列直接用原始品名/顏色 (不 normalize)，因為不扣 ER 庫存、只用於請款單
-    // ER 倉庫的列才需要 normalize 對到 MASTER 標準名
+    // 新流程：匯入時不自動 normalize，全部存 raw 給使用者在待澄清頁手動審核
+    // 這樣使用者完全掌控每一筆的最終品名/顏色，不會被系統自作主張歸錯類
     const isDirect = r.parsedClient.kind === 'direct';
     const clientRaw = r.parsedClient.client;
-    const productName = isDirect ? r.rawProduct : normalizeProductName(r.rawProduct, r.rawColor, clientRaw);
-    const colorName = isDirect ? r.rawColor : normalizeColorName(r.rawColor, r.rawProduct, clientRaw);
+    const productName = r.rawProduct;
+    const colorName = r.rawColor;
     const id = makeStableRowId(r, productName, colorName);
     if (existingIds.has(id)) {
       dedupedCount++;
@@ -2872,9 +3100,9 @@ async function writeStagedRows(stagedRows, filename) {
     }
     writtenCount++;
     existingIds.add(id); // 防止同次匯入內也有重複
-    // 直送列 (kind=direct) → 自動審核，因為不扣 ER 庫存，不用煩使用者
-    // ER 倉庫進貨列 (kind=warehouse/warehouse-tagged) → 未審核，要使用者在「待澄清」確認
-    const autoReviewed = r.parsedClient.kind === 'direct';
+    // 新流程：所有列都標未審核，使用者在「待澄清」逐筆/批次審
+    // 不再自動審核直送列 — 因為使用者要對每一筆的品名/顏色把關
+    const autoReviewed = false;
     return setDoc(doc(db, ...ROOT, 'master_data', id), {
       date: r.date,
       client: r.parsedClient.client,
@@ -3080,6 +3308,8 @@ async function batchPdfDownload() {
   if (!all.length) { alert('目前篩選下沒有 SA 可以下載'); return; }
   if (!confirm(`準備下載 ${all.length} 張 PDF。\n(瀏覽器可能會詢問是否允許多檔下載，請按「允許」)`)) return;
   state.isDownloadingPdf = true;
+  // 臨時把 PDF capture HTML build 出來 (這個動作很重，所以只在這裡跑，不放在 render())
+  renderHiddenPdfCaptures();
   try {
     const html2pdf = await loadHtml2Pdf();
     for (const inv of all) {
@@ -3440,6 +3670,18 @@ document.addEventListener('click', async (e) => {
       await approveGroup(t.dataset.key);
       break;
     }
+    case 'approve-row': {
+      await approveRow(t.dataset.id);
+      break;
+    }
+    case 'approve-batch-by-raw': {
+      await approveBatchByRaw(t.dataset.id);
+      break;
+    }
+    case 'skip-row': {
+      await skipRow(t.dataset.id);
+      break;
+    }
     case 'auto-approve-direct': {
       // 批次處理所有「直送」未審核列：
       // 1) 設 reviewed = true
@@ -3516,9 +3758,13 @@ document.addEventListener('click', async (e) => {
     }
     case 'boss-export-csv': {
       const focus = state.bossFocus || 'C4';
-      const focusSkus = MASTER_INVENTORY.filter(s => s.itemName === focus);
+      const isAll = focus === '__ALL__';
+      const eff = getEffectiveInventory();
+      const focusSkus = isAll ? eff : eff.filter(s => s.itemName === focus);
       const today = new Date().toISOString().split('T')[0];
-      const lines = ['#,顏色,補貨標準,2025出貨,2026出貨,2026庫存,庫存-補貨標準,需補貨'];
+      const lines = isAll
+        ? ['#,品相,顏色,補貨標準,2025出貨,2026出貨,2026庫存,庫存-補貨標準,需補貨']
+        : ['#,顏色,補貨標準,2025出貨,2026出貨,2026庫存,庫存-補貨標準,需補貨'];
       focusSkus.forEach((sku, idx) => {
         const ships = getShipmentsFor(sku.itemName, sku.color);
         const out26 = Math.max(ships.filter(s => (s.date||'').startsWith('2026')).reduce((a,b)=>a+(b.shippedQty||0),0), sku.out2026 || 0);
@@ -3526,12 +3772,15 @@ document.addEventListener('click', async (e) => {
         const safety = sku.safetyLevel || 0;
         const std = sku.recommendedRestock || safety;
         const deficit = cur - safety;
-        lines.push([idx+1, `"${sku.color}"`, std, sku.out2025 || 0, out26, cur, deficit, deficit < 0 ? 'YES' : 'NO'].join(','));
+        const row = isAll
+          ? [idx+1, `"${sku.itemName}"`, `"${sku.color}"`, std, sku.out2025 || 0, out26, cur, deficit, deficit < 0 ? 'YES' : 'NO']
+          : [idx+1, `"${sku.color}"`, std, sku.out2025 || 0, out26, cur, deficit, deficit < 0 ? 'YES' : 'NO'];
+        lines.push(row.join(','));
       });
       const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `回報老闆_${focus}_${today}.csv`;
+      a.download = `回報老闆_${isAll ? '全部品相' : focus}_${today}.csv`;
       a.click();
       break;
     }
@@ -3555,39 +3804,35 @@ document.addEventListener('change', (e) => {
   if (e.target.id === 'ocr-image-input') {
     handleOcrImages(e);
   }
-  // 待澄清頁：左邊品名選擇變動 → 右邊顏色 dropdown 重建候選
-  if (e.target.classList && e.target.classList.contains('review-product-pick')) {
-    const gi = e.target.dataset.gi;
-    const colorSel = document.querySelector(`.review-color-pick[data-gi="${gi}"]`);
-    if (!colorSel) return;
-    const picked = e.target.value;
-    // 決定要用哪個 product 來查候選顏色
-    let targetProd = '';
-    if (picked === '__NEW__' || picked === '__SKIP__') {
-      // 用左邊「CSV 內品名」的原值嘗試 normalize
-      targetProd = normalizeProductName(e.target.dataset.raw);
-    } else {
-      targetProd = picked;
+  // 待澄清頁：選到 ✏️ 自訂 → prompt 使用者輸入自訂品名/顏色
+  if (e.target.classList && e.target.classList.contains('review-product-pick') && e.target.value === '__CUSTOM__') {
+    const custom = prompt('輸入自訂品相名稱（例：Sandwich Mesh 250G (OC)）：');
+    if (!custom || !custom.trim()) {
+      e.target.value = '__KEEP__'; // 取消 → 復原
+      return;
     }
-    const candidates = MASTER_INVENTORY
-      .filter(s => s.itemName === targetProd)
-      .map(s => s.color);
-    const uniqColors = [...new Set(candidates)].sort();
-    const rawColor = colorSel.dataset.raw;
-    const currentVal = colorSel.value;
-    colorSel.innerHTML = `
-      <option value="__SKIP__">— 還未決定 —</option>
-      <option value="__KEEP__" style="color:var(--text-2);">✓ 確認原顏色 (保留 ${escHtml(rawColor || '空')})</option>
-      <option value="__NEW__" style="color:var(--warn-text);">＋ 確認是新顏色</option>
-      ${uniqColors.length ? `<option disabled>── ${escHtml(targetProd)} 內既有顏色 ──</option>` : '<option disabled>(該品名下無既有顏色)</option>'}
-      ${uniqColors.map(c => `<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('')}
-    `;
-    // 還原使用者已選的值（若還在候選中）
-    if ([...colorSel.options].some(o => o.value === currentVal)) {
-      colorSel.value = currentVal;
-    } else {
-      colorSel.value = '__SKIP__';
+    const customTrim = custom.trim();
+    // 動態加一個 option 並選中
+    const opt = document.createElement('option');
+    opt.value = customTrim;
+    opt.textContent = `✨ ${customTrim} (自訂)`;
+    opt.selected = true;
+    e.target.insertBefore(opt, e.target.children[2]); // 放在 __CUSTOM__ 跟 disabled 之間
+    e.target.value = customTrim;
+  }
+  if (e.target.classList && e.target.classList.contains('review-color-pick') && e.target.value === '__CUSTOM__') {
+    const custom = prompt('輸入自訂顏色名稱：');
+    if (!custom || !custom.trim()) {
+      e.target.value = '__KEEP__';
+      return;
     }
+    const customTrim = custom.trim();
+    const opt = document.createElement('option');
+    opt.value = customTrim;
+    opt.textContent = `✨ ${customTrim} (自訂)`;
+    opt.selected = true;
+    e.target.insertBefore(opt, e.target.children[2]);
+    e.target.value = customTrim;
   }
 });
 
