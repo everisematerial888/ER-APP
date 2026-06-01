@@ -1432,7 +1432,7 @@ function filteredMaster() {
 
 // 同日期+同產地一張 SA 單 — 只算「出貨」(kind=direct) 且「已審核」
 // 未審核的列不會出現在請款單裡，等使用者在待澄清頁按 ✓ 後才浮現
-function groupSAInvoices() {
+function _groupSAInvoicesImpl() {
   const res = {};
   // 出貨列才會出請款單。手動校正列 (source=__manual__ 或 isCorrection=true) 雖然會扣庫存
   // 但不該出現在請款單 — 那是內部對帳/盤點用，不是真實出貨給客戶
@@ -1467,6 +1467,7 @@ function groupSAInvoices() {
   });
   return res;
 }
+const groupSAInvoices = memoizeByMasterVersion(_groupSAInvoicesImpl);
 
 function displayedInvoices() {
   const all = groupSAInvoices();
@@ -1673,9 +1674,25 @@ function inferTagFromProduct(product) {
   return null;
 }
 
+// === 渲染加速：memoize 大型計算 ===
+// state.masterData 每次有變動就 bump 這個 version；下面的記憶化函數比對 version 決定要不要重算
+let _masterDataVersion = 0;
+function bumpMasterDataVersion() { _masterDataVersion++; }
+// memoize wrapper：給沒參數的純函數用 (依 state.masterData 結果)
+function memoizeByMasterVersion(fn) {
+  let lastVersion = -1;
+  let lastResult = null;
+  return function () {
+    if (_masterDataVersion === lastVersion) return lastResult;
+    lastVersion = _masterDataVersion;
+    lastResult = fn.apply(this, arguments);
+    return lastResult;
+  };
+}
+
 // 動態擴充版的 MASTER_INVENTORY — 含使用者透過待澄清確認過的新 SKU
 // 凡是 master_data 內已審核但 (product, color) 不在 MASTER 內的，都算「使用者新增」
-function getEffectiveInventory() {
+function _getEffectiveInventoryImpl() {
   const base = MASTER_INVENTORY.map(s => ({ ...s }));
   const keys = new Set(base.map(s => `${(s.itemName||'').toUpperCase()}|${(s.color||'').toUpperCase()}`));
   state.masterData.forEach(d => {
@@ -1704,6 +1721,7 @@ function getEffectiveInventory() {
   });
   return base;
 }
+const getEffectiveInventory = memoizeByMasterVersion(_getEffectiveInventoryImpl);
 
 // 取得篩選後庫存（依 scope: ALL / ER / 客戶 tag）
 function inventoryScopeFiltered() {
@@ -2431,6 +2449,7 @@ function renderNeedsReview() {
         return pendingDirect > 0 ? `<span style="margin-left:8px; color:var(--warn-text);">⚠ 另有 ${pendingDirect} 筆直送列待清理 → 按右邊按鈕一鍵搞定</span>` : '';
       })()}</span>
       <span style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn btn-secondary" data-action="bulk-delete-before-date">🗑 批次刪除某日前未審</button>
         <button class="btn btn-secondary" data-action="auto-approve-direct">⚡ 一鍵自動審核所有直送列</button>
         <button class="btn btn-secondary" data-action="export-needs-review">↓ 下載 CSV 給泰國問</button>
       </span>
@@ -2542,6 +2561,7 @@ async function approveRow(rowId) {
   const idx = state.masterData.findIndex(d => d.id === rowId);
   if (idx >= 0) {
     state.masterData[idx] = { ...state.masterData[idx], reviewed: true, product: targetProduct, color: targetColor };
+    bumpMasterDataVersion();
   }
   // 2. 即時把 DOM 那一列移除 (淡出動畫) — 比 full render 快 100 倍
   tr.style.transition = 'opacity 0.18s, transform 0.18s';
@@ -2565,7 +2585,7 @@ async function approveRow(rowId) {
   } catch (e) {
     alert('審核失敗：' + e.message);
     // 失敗 → 回滾本地狀態 + 重新 render 把列補回
-    if (idx >= 0) state.masterData[idx] = { ...row };
+    if (idx >= 0) { state.masterData[idx] = { ...row }; bumpMasterDataVersion(); }
     render();
   }
 }
@@ -2629,13 +2649,14 @@ async function skipRow(rowId) {
   const removed = idx >= 0 ? state.masterData[idx] : null;
   if (idx >= 0) {
     state.masterData.splice(idx, 1);
+    bumpMasterDataVersion();
     render();
   }
   try {
     await deleteDoc(doc(db, ...ROOT, 'master_data', rowId));
   } catch (e) {
     alert('刪除失敗：' + e.message);
-    if (removed) { state.masterData.splice(idx, 0, removed); render(); }
+    if (removed) { state.masterData.splice(idx, 0, removed); bumpMasterDataVersion(); render(); }
   }
 }
 
@@ -2803,6 +2824,17 @@ function renderSettings() {
             <input type="checkbox" id="gs-auto-toggle" ${gsAuto ? 'checked' : ''}> 每 5 天自動同步全部
           </label>
         </div>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:12px; padding-top:10px; border-top: 1px solid var(--line);">
+          <label style="font-size:12px; color:var(--text-3); display:flex; align-items:center; gap:6px;">
+            只匯入這個日期之後的列：
+            <input type="date" id="gs-cutoff-date" value="${escAttr((localStorage.getItem('everise_csv_import_after') || '').replace(/\//g,'-'))}" style="border:1px solid var(--line-strong); border-radius:5px; padding:4px 8px; font-size:11px;">
+          </label>
+          <button class="btn btn-secondary" data-action="gs-save-cutoff" style="padding:5px 10px; font-size:11px;">儲存</button>
+          <button class="btn-ghost" data-action="gs-clear-cutoff" style="padding:5px 10px; font-size:11px;">清除</button>
+        </div>
+        <p style="font-size:11px; color:var(--text-4); margin-top:6px; line-height:1.5;">
+          ${localStorage.getItem('everise_csv_import_after') ? `目前設定：只匯入 <strong style="color:var(--info-text);">${localStorage.getItem('everise_csv_import_after')}</strong> 之後的列` : '沒設定 = 全部匯入。設定後可避免每次同步整份試算表都把舊月份重新拉進待澄清。'}
+        </p>
         <p id="gs-status" style="font-size:11px; color:var(--text-4); margin-top:10px;">${gsUrls.filter(u=>u.url).length} 份試算表已設定</p>
       </div>
 
@@ -3003,6 +3035,13 @@ async function handleCsvUpload(e) {
         const shippedQty = sanitizeQuantity(rawQty);
         const rawClient = (cols[idx.client] || 'UNKNOWN').replace(/"/g, '').trim();
         const parsedClient = parseClientCell(rawClient);
+        const rowDate = cols[idx.date] || '';
+        // 匯入日期過濾 — 若設定 localStorage.everise_csv_import_after，跳過該日期之前的列
+        // 主要用於 GSheets 自動同步 — 避免每次拉整份試算表都把舊月份重新匯入
+        const cutoffAfter = localStorage.getItem('everise_csv_import_after') || '';
+        if (cutoffAfter && rowDate) {
+          if (dateToSortable(rowDate) < dateToSortable(cutoffAfter)) return; // 跳過
+        }
         // origin 直接依 CSV 檔名決定（China CSV → 'China'，其他 → 'ER'）
         // 之前的 ternary 邏輯會把 warehouse 列強制標 'China'，導致 ER 倉自己的紀錄被誤標
         const finalOrigin = origin;
@@ -3012,7 +3051,7 @@ async function handleCsvUpload(e) {
           rawClient, parsedClient,
           shippedQty, rawQty,
           finalOrigin,
-          date: cols[idx.date] || '',
+          date: rowDate,
           price: idx.price !== -1 ? (parseFloat((cols[idx.price] || '').replace(/[^\d.\-]/g, '')) || 0) : 0,
           orderQty: idx.orderQty !== -1 ? (parseFloat((cols[idx.orderQty] || '').replace(/[^\d.\-]/g, '')) || 0) : 0,
           cabinetNo: idx.cabinet !== -1 ? (cols[idx.cabinet] || '').replace(/"/g, '') : '',
@@ -3027,12 +3066,25 @@ async function handleCsvUpload(e) {
       // 庫存/請款單只看 reviewed=true 的列
       const stats = await writeStagedRows(stagedRows, file.name);
       console.log(`[${file.name}] 寫入 ${stats.writtenCount}, 去重跳過 ${stats.dedupedCount}`);
-      window.__lastImportStats = window.__lastImportStats || { written: 0, deduped: 0 };
+      if (stats.dedupedRows && stats.dedupedRows.length) {
+        console.warn(`[${file.name}] 被跳過的 ${stats.dedupedRows.length} 筆 (跟既有資料完全相同):`);
+        console.table(stats.dedupedRows);
+      }
+      window.__lastImportStats = window.__lastImportStats || { written: 0, deduped: 0, dedupedRows: [] };
       window.__lastImportStats.written += stats.writtenCount;
       window.__lastImportStats.deduped += stats.dedupedCount;
+      window.__lastImportStats.dedupedRows = (window.__lastImportStats.dedupedRows || []).concat(stats.dedupedRows || []);
     }
-    const s = window.__lastImportStats || { written: 0, deduped: 0 };
-    alert(`✓ 匯入完成：${files.length} 個檔案\n寫入 ${s.written} 筆，去重跳過 ${s.deduped} 筆`);
+    const s = window.__lastImportStats || { written: 0, deduped: 0, dedupedRows: [] };
+    let msg = `✓ 匯入完成：${files.length} 個檔案\n寫入 ${s.written} 筆，去重跳過 ${s.deduped} 筆`;
+    if (s.deduped > 0 && s.dedupedRows && s.dedupedRows.length) {
+      msg += `\n\n被跳過的 ${s.dedupedRows.length} 筆 (跟既有資料完全相同 — 同日期/客戶/品名/顏色/數量/櫃號/訂單號)：`;
+      const preview = s.dedupedRows.slice(0, 8).map(d => `• ${d.date} · ${d.client} · ${d.product || ''} ${d.color || ''} · ${d.qty}Y${d.orderNo ? ' · #'+d.orderNo : ''}`).join('\n');
+      msg += `\n${preview}`;
+      if (s.dedupedRows.length > 8) msg += `\n... 還有 ${s.dedupedRows.length - 8} 筆，完整列表請按 F12 看 Console`;
+      msg += `\n\n如果這些其實是不同筆（例如同客戶當天有兩單獨立訂單），請去原始 CSV 加上不同的訂單號 (Order No.) 再重新匯入。`;
+    }
+    alert(msg);
     window.__lastImportStats = null;
     state.view = 'dashboard';
     render();
@@ -3062,7 +3114,9 @@ function stableHash(str) {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
-// 用「日期+客戶+品名+顏色+數量+櫃號+kind」生穩定 ID — 重複上傳就會 overwrite 同一個 doc 而不是新增
+// 用「日期+客戶+品名+顏色+數量+櫃號+kind+訂單號」生穩定 ID
+// 重複上傳完全一樣的 CSV 會 overwrite 同一個 doc，不會新增重複列。
+// 但 orderNo 不同 → 視為不同筆 (即使其他欄位都一樣) — 保護真實獨立訂單
 function makeStableRowId(r, productName, colorName) {
   const key = [
     r.date || '',
@@ -3072,15 +3126,18 @@ function makeStableRowId(r, productName, colorName) {
     colorName || '',
     r.shippedQty || 0,
     r.cabinetNo || '',
-    r.parsedClient.kind || ''
+    r.parsedClient.kind || '',
+    (r.orderNo || '').trim() // 加入訂單號 — 同日同品同色但不同訂單 = 不同筆
   ].join('|').toUpperCase();
   return 'row_' + stableHash(key);
 }
 
 async function writeStagedRows(stagedRows, filename) {
   const skipSet = state.pendingImport?.decisions?.skip || new Set();
-  const existingIds = new Set(state.masterData.map(d => d.id));
+  // 既有 IDs + 對應的列摘要（給「為什麼被跳過」用）
+  const existingMap = new Map(state.masterData.map(d => [d.id, d]));
   let writtenCount = 0, dedupedCount = 0;
+  const dedupedRows = []; // 收集被跳過的列詳情
   const promises = stagedRows.map(r => {
     if (skipSet.has(r.rIdx)) return null;
     // 新流程：匯入時不自動 normalize，全部存 raw 給使用者在待澄清頁手動審核
@@ -3090,12 +3147,20 @@ async function writeStagedRows(stagedRows, filename) {
     const productName = r.rawProduct;
     const colorName = r.rawColor;
     const id = makeStableRowId(r, productName, colorName);
-    if (existingIds.has(id)) {
+    if (existingMap.has(id)) {
       dedupedCount++;
+      // 紀錄這筆為什麼被跳過：raw 列 + 既有列的對照
+      const existing = existingMap.get(id);
+      dedupedRows.push({
+        date: r.date, client: r.parsedClient.client, product: productName, color: colorName,
+        qty: r.shippedQty, cabin: r.cabinetNo, orderNo: r.orderNo,
+        existingId: id,
+        existingSource: existing.source || '?'
+      });
       return null; // 同樣的列已存在 → 跳過，避免重複扣庫存
     }
     writtenCount++;
-    existingIds.add(id); // 防止同次匯入內也有重複
+    existingMap.set(id, { source: filename }); // 防止同次匯入內也有重複
     // 新流程：所有列都標未審核，使用者在「待澄清」逐筆/批次審
     // 不再自動審核直送列 — 因為使用者要對每一筆的品名/顏色把關
     const autoReviewed = false;
@@ -3124,7 +3189,7 @@ async function writeStagedRows(stagedRows, filename) {
     });
   }).filter(p => p);
   await Promise.all(promises);
-  return { writtenCount, dedupedCount };
+  return { writtenCount, dedupedCount, dedupedRows };
 }
 
 // 開啟 mapping 對話框
@@ -3722,6 +3787,53 @@ document.addEventListener('click', async (e) => {
       await skipRow(t.dataset.id);
       break;
     }
+    case 'gs-save-cutoff': {
+      const input = $('#gs-cutoff-date');
+      const val = (input?.value || '').trim();
+      if (!val) { alert('請先選日期'); break; }
+      // 轉成 YYYY/M/D 統一格式存
+      const [y, m, d] = val.split('-');
+      const norm = `${y}/${parseInt(m)}/${parseInt(d)}`;
+      localStorage.setItem('everise_csv_import_after', norm);
+      alert(`✓ 已設定：只匯入 ${norm} 之後的列\n下次同步/匯入就會自動過濾`);
+      render();
+      break;
+    }
+    case 'gs-clear-cutoff': {
+      localStorage.removeItem('everise_csv_import_after');
+      alert('✓ 已清除日期過濾，下次同步會匯入全部資料');
+      render();
+      break;
+    }
+    case 'bulk-delete-before-date': {
+      // 批次刪除某日期之前的所有未審核列 — 用於清理舊資料 (例如自動同步把 1-4 月也拉了進來)
+      const cutoff = prompt('刪除這個日期之前的所有未審核列\n(格式 YYYY/M/D 或 YYYY-MM-DD)\n例如：2026/4/30 → 刪除 5/1 之前的所有未審', '2026/4/30');
+      if (!cutoff) break;
+      const cutoffSortable = dateToSortable(cutoff);
+      if (!cutoffSortable) { alert('日期格式錯誤'); break; }
+      const targets = state.masterData.filter(d => {
+        if (isReviewed(d)) return false; // 只刪未審
+        if (!d.date) return false;
+        return dateToSortable(d.date) <= cutoffSortable;
+      });
+      if (!targets.length) { alert(`沒有「${cutoff} 及之前」的未審核列`); break; }
+      if (!confirm(`確認刪除 ${targets.length} 筆 ${cutoff} 及之前的未審核列？\n這個動作會永久刪除 Firestore 的資料，無法復原。\n\n(這些列不會影響庫存/請款單，因為它們都是未審狀態)`)) break;
+      try {
+        // Firestore 一次最多 500 操作，分批
+        for (let i = 0; i < targets.length; i += 400) {
+          const batch = writeBatch(db);
+          targets.slice(i, i + 400).forEach(d => batch.delete(doc(db, ...ROOT, 'master_data', d.id)));
+          await batch.commit();
+        }
+        // 樂觀更新 local state
+        const targetIds = new Set(targets.map(d => d.id));
+        state.masterData = state.masterData.filter(d => !targetIds.has(d.id));
+        bumpMasterDataVersion();
+        alert(`✓ 已刪除 ${targets.length} 筆 ${cutoff} 及之前的未審核列`);
+        render();
+      } catch (e) { alert('刪除失敗：' + e.message); }
+      break;
+    }
     case 'auto-approve-direct': {
       // 批次處理所有「直送」未審核列：
       // 1) 設 reviewed = true
@@ -4017,6 +4129,7 @@ onAuthStateChanged(auth, (u) => {
     state.masterData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     state.syncStatus = 'live';
     clearERCabinCache();
+    bumpMasterDataVersion(); // 讓 memoize 失效，重新算
     render();
   }, (err) => {
     console.warn('Firestore master_data read blocked:', err);
