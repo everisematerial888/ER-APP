@@ -1303,6 +1303,7 @@ const state = {
   manualRevenueData: [],
   clientConfig: { ...DEFAULT_CLIENT_CONFIG },
   userMappings: { products: {}, colors: {}, pairs: {} }, // products/colors=舊版單一映射(向後相容)；pairs=新版品名+顏色綁定
+  batchNames: {}, // 批次顯示名 — { 原始檔名: "2026/5 第一批 (5/1-5/10)" }，存在 Firestore settings/batchNames
   pendingImport: null, // 匯入暫停中: { filename, origin, allRows, unmappedProducts, unmappedColors, currentMappings }
   sortMode: 'date_desc', // 出貨追蹤 / L3 / 月度營業額 共用排序：date_desc / date_asc / qty_desc / qty_asc / client_asc / product_asc
   bossFilter: null, // 回報老闆篩選: null/'neg'/'need'/'deficit'
@@ -2665,43 +2666,74 @@ async function skipRow(rowId) {
 // === Tab 6: 資料管理 (Data Management) ======================================
 // ============================================================================
 function renderDataManagement() {
-  // 依 source 分組
+  // 依 source 分組，並算出日期範圍 + 已審/未審狀態
   const bySource = {};
   state.masterData.forEach(d => {
     const src = d.source || '(unknown)';
-    if (!bySource[src]) bySource[src] = { count: 0, lastTs: 0, totalQty: 0, clients: new Set() };
-    bySource[src].count++;
-    bySource[src].totalQty += d.shippedQty || 0;
-    if (d.client) bySource[src].clients.add(d.client);
-    if (d.timestamp && d.timestamp > bySource[src].lastTs) bySource[src].lastTs = d.timestamp;
+    if (!bySource[src]) bySource[src] = {
+      count: 0, lastTs: 0, totalQty: 0, clients: new Set(),
+      firstDate: null, lastDate: null,
+      reviewedCount: 0, unreviewedCount: 0
+    };
+    const b = bySource[src];
+    b.count++;
+    b.totalQty += d.shippedQty || 0;
+    if (d.client) b.clients.add(d.client);
+    if (d.timestamp && d.timestamp > b.lastTs) b.lastTs = d.timestamp;
+    if (d.date) {
+      const sortable = dateToSortable(d.date);
+      if (!b.firstDate || sortable < dateToSortable(b.firstDate)) b.firstDate = d.date;
+      if (!b.lastDate || sortable > dateToSortable(b.lastDate)) b.lastDate = d.date;
+    }
+    if (isReviewed(d)) b.reviewedCount++;
+    else b.unreviewedCount++;
   });
   const sources = Object.entries(bySource).sort((a,b) => b[1].lastTs - a[1].lastTs);
+  // 使用者自訂的批次顯示名 (存 Firestore settings/batchNames，但本地 mirror 在 state.batchNames)
+  const batchNames = state.batchNames || {};
 
   return `<h2>資料管理 Data Management</h2>
     <div class="card" style="margin-bottom:16px;">
       <div class="card-hdr">
-        <span>匯入來源檔案 (${sources.length} 個)</span>
-        <span style="font-size:11px; color:var(--text-4);">點 🗑 批次刪除整個來源</span>
+        <span>匯入批次 (${sources.length} 個)</span>
+        <span style="font-size:11px; color:var(--text-4);">點 ✎ 改顯示名 · 點 🗑 批次刪整批</span>
       </div>
       <table>
         <thead><tr>
-          <th>Source File</th>
+          <th>批次 / 來源檔</th>
+          <th>資料日期範圍</th>
           <th class="text-right">筆數</th>
-          <th class="text-right">總碼數 (Y)</th>
-          <th>涉及客戶</th>
-          <th>最後匯入時間</th>
-          <th style="width:80px;"></th>
+          <th class="text-right">總碼數</th>
+          <th>客戶</th>
+          <th>匯入時間</th>
+          <th style="width:140px;"></th>
         </tr></thead>
         <tbody>
-          ${sources.length === 0 ? '<tr><td colspan="6" class="empty">尚無資料來源 — 從上方 Import CSV 開始</td></tr>' : ''}
-          ${sources.map(([src, info]) => `<tr>
-            <td class="mono" style="font-weight:600; word-break:break-all;">${escHtml(src)}</td>
-            <td class="text-right mono">${fmtInt(info.count)}</td>
-            <td class="text-right mono">${fmtInt(info.totalQty)}</td>
-            <td style="font-size:11px; color:var(--text-3);">${[...info.clients].slice(0,8).join(', ')}${info.clients.size > 8 ? '…' : ''}</td>
-            <td class="mono" style="font-size:11px; color:var(--text-3);">${info.lastTs ? new Date(info.lastTs).toISOString().split('T')[0] : '-'}</td>
-            <td><button class="btn btn-danger" data-action="delete-source" data-source="${escAttr(src)}">🗑 刪除</button></td>
-          </tr>`).join('')}
+          ${sources.length === 0 ? '<tr><td colspan="7" class="empty">尚無資料來源 — 從上方 Import CSV 開始</td></tr>' : ''}
+          ${sources.map(([src, info]) => {
+            const customName = batchNames[src];
+            const dateRange = info.firstDate && info.lastDate
+              ? (info.firstDate === info.lastDate ? info.firstDate : `${info.firstDate} ~ ${info.lastDate}`)
+              : '—';
+            const reviewSummary = info.unreviewedCount > 0
+              ? `<span style="color:var(--warn-text);">⏳ ${info.unreviewedCount} 未審</span> / ${info.reviewedCount} 已審`
+              : `<span style="color:var(--success-text, var(--text-3));">✓ ${info.reviewedCount} 全已審</span>`;
+            return `<tr>
+              <td style="word-break:break-all;">
+                ${customName ? `<div style="font-weight:600; font-size:13px;">${escHtml(customName)}</div><div class="mono" style="font-size:10px; color:var(--text-4);">${escHtml(src)}</div>` : `<div class="mono" style="font-weight:600;">${escHtml(src)}</div>`}
+                <div style="font-size:10px; color:var(--text-3); margin-top:2px;">${reviewSummary}</div>
+              </td>
+              <td class="mono" style="font-size:11px; color:var(--text-2);">${escHtml(dateRange)}</td>
+              <td class="text-right mono">${fmtInt(info.count)}</td>
+              <td class="text-right mono">${fmtInt(info.totalQty)}</td>
+              <td style="font-size:11px; color:var(--text-3);">${[...info.clients].slice(0,6).join(', ')}${info.clients.size > 6 ? '…' : ''}</td>
+              <td class="mono" style="font-size:11px; color:var(--text-3);">${info.lastTs ? new Date(info.lastTs).toLocaleDateString() : '-'}</td>
+              <td style="white-space:nowrap;">
+                <button class="btn-ghost btn-icon" data-action="rename-batch" data-source="${escAttr(src)}" title="改顯示名稱">✎</button>
+                <button class="btn btn-danger" data-action="delete-source" data-source="${escAttr(src)}" style="padding:3px 8px; font-size:11px;">🗑</button>
+              </td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -3064,25 +3096,47 @@ async function handleCsvUpload(e) {
       // 新流程 (大改版)：所有列直接寫入但標 reviewed=false
       // 不再跳模態框讓使用者一筆一筆選——改成統一在「待澄清」頁逐筆審核 (帶 pre-fill)
       // 庫存/請款單只看 reviewed=true 的列
+      // === 漂移偵測 (drift detection) ===
+      // 匯入前先收集「同檔名既有列」的 ID。匯入後比對：哪些既有 ID 沒有出現在這次 CSV 內 → 可能被泰國刪除/修改了
+      const previousIdsForSource = new Set(state.masterData.filter(d => d.source === file.name).map(d => d.id));
       const stats = await writeStagedRows(stagedRows, file.name);
-      console.log(`[${file.name}] 寫入 ${stats.writtenCount}, 去重跳過 ${stats.dedupedCount}`);
+      // 算 orphans = 之前有 source=file.name 的 ID 但這次沒寫入也沒被 dedup 認識
+      // (stats.newIdsThisImport 是「這次匯入產生的所有 ID 集合」 — 包含寫入的 + 被 dedup 跳過的)
+      const orphanIds = [...previousIdsForSource].filter(id => !stats.allIdsThisImport.has(id));
+      const orphans = orphanIds.map(id => state.masterData.find(d => d.id === id)).filter(Boolean);
+      console.log(`[${file.name}] 寫入 ${stats.writtenCount}, 去重跳過 ${stats.dedupedCount}, 漂移偵測 ${orphans.length} 筆`);
       if (stats.dedupedRows && stats.dedupedRows.length) {
         console.warn(`[${file.name}] 被跳過的 ${stats.dedupedRows.length} 筆 (跟既有資料完全相同):`);
         console.table(stats.dedupedRows);
       }
-      window.__lastImportStats = window.__lastImportStats || { written: 0, deduped: 0, dedupedRows: [] };
+      if (orphans.length) {
+        console.warn(`[${file.name}] ⚠️ 漂移偵測 — 以下 ${orphans.length} 筆「之前有、這次 CSV 沒有」(可能被泰國刪改):`);
+        console.table(orphans.map(o => ({ date: o.date, client: o.client, product: o.product, color: o.color, qty: o.shippedQty, orderNo: o.orderNo, reviewed: o.reviewed, id: o.id })));
+      }
+      window.__lastImportStats = window.__lastImportStats || { written: 0, deduped: 0, orphans: 0, dedupedRows: [], orphanRows: [] };
       window.__lastImportStats.written += stats.writtenCount;
       window.__lastImportStats.deduped += stats.dedupedCount;
+      window.__lastImportStats.orphans += orphans.length;
       window.__lastImportStats.dedupedRows = (window.__lastImportStats.dedupedRows || []).concat(stats.dedupedRows || []);
+      window.__lastImportStats.orphanRows = (window.__lastImportStats.orphanRows || []).concat(orphans);
     }
-    const s = window.__lastImportStats || { written: 0, deduped: 0, dedupedRows: [] };
+    const s = window.__lastImportStats || { written: 0, deduped: 0, orphans: 0, dedupedRows: [], orphanRows: [] };
     let msg = `✓ 匯入完成：${files.length} 個檔案\n寫入 ${s.written} 筆，去重跳過 ${s.deduped} 筆`;
+    if (s.orphans > 0) {
+      msg += `\n⚠️ 漂移偵測：${s.orphans} 筆「之前有、這次 CSV 沒有」`;
+    }
     if (s.deduped > 0 && s.dedupedRows && s.dedupedRows.length) {
-      msg += `\n\n被跳過的 ${s.dedupedRows.length} 筆 (跟既有資料完全相同 — 同日期/客戶/品名/顏色/數量/櫃號/訂單號)：`;
-      const preview = s.dedupedRows.slice(0, 8).map(d => `• ${d.date} · ${d.client} · ${d.product || ''} ${d.color || ''} · ${d.qty}Y${d.orderNo ? ' · #'+d.orderNo : ''}`).join('\n');
+      msg += `\n\n被跳過的 ${s.dedupedRows.length} 筆 (跟既有資料完全相同)：`;
+      const preview = s.dedupedRows.slice(0, 5).map(d => `• ${d.date} · ${d.client} · ${d.product || ''} ${d.color || ''} · ${d.qty}Y${d.orderNo ? ' · #'+d.orderNo : ''}`).join('\n');
       msg += `\n${preview}`;
-      if (s.dedupedRows.length > 8) msg += `\n... 還有 ${s.dedupedRows.length - 8} 筆，完整列表請按 F12 看 Console`;
-      msg += `\n\n如果這些其實是不同筆（例如同客戶當天有兩單獨立訂單），請去原始 CSV 加上不同的訂單號 (Order No.) 再重新匯入。`;
+      if (s.dedupedRows.length > 5) msg += `\n... 還有 ${s.dedupedRows.length - 5} 筆，F12 → Console 看完整`;
+    }
+    if (s.orphans > 0 && s.orphanRows && s.orphanRows.length) {
+      msg += `\n\n⚠️ 漂移列表 (可能被泰國刪改 — 之前匯入時有、這次 CSV 沒有)：`;
+      const preview = s.orphanRows.slice(0, 5).map(d => `• ${d.date} · ${d.client} · ${d.product || ''} ${d.color || ''} · ${d.shippedQty}Y${d.orderNo ? ' · #'+d.orderNo : ''}`).join('\n');
+      msg += `\n${preview}`;
+      if (s.orphanRows.length > 5) msg += `\n... 還有 ${s.orphanRows.length - 5} 筆，F12 → Console 看完整`;
+      msg += `\n\n→ 去「出貨追蹤」搜尋這些日期，確認泰國是不是真的刪/改了。若是 → 手動更新或刪除即可。`;
     }
     alert(msg);
     window.__lastImportStats = null;
@@ -3138,6 +3192,7 @@ async function writeStagedRows(stagedRows, filename) {
   const existingMap = new Map(state.masterData.map(d => [d.id, d]));
   let writtenCount = 0, dedupedCount = 0;
   const dedupedRows = []; // 收集被跳過的列詳情
+  const allIdsThisImport = new Set(); // 這次 CSV 產生的所有 ID (寫入的 + 被 dedup 跳過的都算)
   const promises = stagedRows.map(r => {
     if (skipSet.has(r.rIdx)) return null;
     // 新流程：匯入時不自動 normalize，全部存 raw 給使用者在待澄清頁手動審核
@@ -3147,6 +3202,7 @@ async function writeStagedRows(stagedRows, filename) {
     const productName = r.rawProduct;
     const colorName = r.rawColor;
     const id = makeStableRowId(r, productName, colorName);
+    allIdsThisImport.add(id); // 不管寫不寫，都算「這次 CSV 出現過的 ID」
     if (existingMap.has(id)) {
       dedupedCount++;
       // 紀錄這筆為什麼被跳過：raw 列 + 既有列的對照
@@ -3189,7 +3245,7 @@ async function writeStagedRows(stagedRows, filename) {
     });
   }).filter(p => p);
   await Promise.all(promises);
-  return { writtenCount, dedupedCount, dedupedRows };
+  return { writtenCount, dedupedCount, dedupedRows, allIdsThisImport };
 }
 
 // 開啟 mapping 對話框
@@ -3690,6 +3746,22 @@ document.addEventListener('click', async (e) => {
       await handleCsvUpload({ target: { files: [file], value: '' } });
       break;
     }
+    case 'rename-batch': {
+      const src = t.dataset.source;
+      const current = state.batchNames?.[src] || '';
+      const newName = prompt(`改批次顯示名稱（例如「2026/5 第一批 5/1-5/10」）：\n原始檔名：${src}`, current);
+      if (newName === null) break; // 取消
+      const trimmed = newName.trim();
+      try {
+        const newBatchNames = { ...(state.batchNames || {}) };
+        if (trimmed) newBatchNames[src] = trimmed;
+        else delete newBatchNames[src]; // 空白 → 移除自訂名
+        await setDoc(doc(db, ...ROOT, 'settings', 'batchNames'), newBatchNames, { merge: false });
+        state.batchNames = newBatchNames;
+        render();
+      } catch (e) { alert('改名失敗：' + e.message); }
+      break;
+    }
     case 'delete-source': {
       const src = t.dataset.source;
       const targets = state.masterData.filter(d => (d.source || '(unknown)') === src);
@@ -4173,6 +4245,13 @@ onAuthStateChanged(auth, (u) => {
         colors: data.colors || {},
         pairs: data.pairs || {}
       };
+      render();
+    }
+  });
+  // 批次顯示名 (使用者在 資料管理 改的)
+  onSnapshot(doc(db, ...ROOT, 'settings', 'batchNames'), (snap) => {
+    if (snap.exists()) {
+      state.batchNames = snap.data() || {};
       render();
     }
   });
