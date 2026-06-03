@@ -1303,7 +1303,9 @@ const state = {
   manualRevenueData: [],
   clientConfig: { ...DEFAULT_CLIENT_CONFIG },
   userMappings: { products: {}, colors: {}, pairs: {} }, // products/colors=舊版單一映射(向後相容)；pairs=新版品名+顏色綁定
-  batchNames: {}, // 批次顯示名 — { 原始檔名: "2026/5 第一批 (5/1-5/10)" }，存在 Firestore settings/batchNames
+  batchNames: {}, // 批次顯示名 — { base64(原始檔名): "2026/5 第一批 (5/1-5/10)" }，存在 Firestore settings/batchNames
+  restockStandards: {}, // 使用者自訂補貨標準 — { "品名||顏色": 數字 }，存 Firestore settings/restockStandards
+  dataMgmtExpandedYear: null, // 資料管理頁面目前展開的年份 (預設最新年)
   pendingImport: null, // 匯入暫停中: { filename, origin, allRows, unmappedProducts, unmappedColors, currentMappings }
   sortMode: 'date_desc', // 出貨追蹤 / L3 / 月度營業額 共用排序：date_desc / date_asc / qty_desc / qty_asc / client_asc / product_asc
   bossFilter: null, // 回報老闆篩選: null/'neg'/'need'/'deficit'
@@ -2269,28 +2271,48 @@ function renderBossReport() {
   const focusSkus = isAllMode ? eff : eff.filter(s => s.itemName === focusProduct);
   if (!focusSkus.length) { state.bossFocus = allProducts[0]; return renderBossReport(); }
 
-  // 計算每個顏色的數據 (剩餘以 CSV current2026 為主)
+  // 動態年份 — 自動跟著當前年份走
+  // 例：2026 年看到 2025出貨 / 2026出貨 / 2026庫存
+  //     2027 年看到 2026出貨 / 2027出貨 / 2027庫存
+  const curYear = new Date().getFullYear();
+  const prevYear = curYear - 1;
+  // 使用者自訂的補貨標準 (存 Firestore) — 覆蓋 MASTER 內預設值
+  const customRestock = state.restockStandards || {};
+  const restockKey = (item, color) => `${item}||${color}`;
+
+  // 計算每個顏色的即時數據 (用流水算，不依賴 CSV 快照)
   const rows = focusSkus.map((sku, idx) => {
     const outgoing = getOutgoingFor(sku.itemName, sku.color);
-    const out2025 = getOut2025(sku.itemName, sku.color);
-    const init = sku.init2026 || 0;
-    const current = sku.current2026 || 0;
-    // 2026 出貨 = 所有 2026 年度出貨流水總和 + CSV 內已扣的基準
-    const out2026Flow = outgoing.filter(s => (s.date || '').startsWith('2026')).reduce((a,b) => a + (b.shippedQty || 0), 0);
-    const out2026Baseline = sku.out2026 || 0; // CSV 內 init - current 的差，視為「截至 CSV 匯出時的累計出貨」
-    const out2026 = Math.max(out2026Baseline, out2026Flow); // 取較大者作為實際出貨
-    const safety = sku.safetyLevel || 0;
-    const restockStandard = sku.recommendedRestock || safety;
-    const deficit = current - safety;
-    const needRestock = current < restockStandard;
+    const incoming = getIncomingFor(sku.itemName, sku.color);
+    const outPrevYear = outgoing.filter(s => (s.date || '').startsWith(String(prevYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
+    const outCurYear = outgoing.filter(s => (s.date || '').startsWith(String(curYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
+    const inCurYear = incoming.filter(s => (s.date || '').startsWith(String(curYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
+    // 比對 CSV 內 prevYear 出貨 (從 OUT2025_RAW 來) — 為了顯示連續性
+    const csvPrevOut = (curYear === 2026) ? getOut2025(sku.itemName, sku.color) : 0;
+    const out2025 = Math.max(outPrevYear, csvPrevOut);
+    // CSV 快照 (僅當 2026 年用)
+    const init = Number(sku.init2026) || 0;
+    const csvOut = Number(sku.out2026) || 0;
+    const csvCurrent = Number(sku.current2026) || 0;
+    // 即時庫存：CSV 快照 + 流水增減
+    // (CSV current2026 已是「截至匯出時」剩餘，再加上之後的流水)
+    const stockNow = Math.round(csvCurrent + inCurYear - Math.max(0, outCurYear - csvOut));
+    // 出貨總計 (CSV 內已扣 + 流水額外扣)
+    const totalOutCurYear = Math.round(Math.max(csvOut, outCurYear));
+    // 補貨標準：先看使用者自訂的，否則用 MASTER 預設
+    const userStd = customRestock[restockKey(sku.itemName, sku.color)];
+    const safety = Number(sku.safetyLevel) || 0;
+    const restockStandard = userStd != null ? Number(userStd) : (Number(sku.recommendedRestock) || safety);
+    const deficit = stockNow - safety;
+    const needRestock = stockNow < restockStandard;
     return {
       idx: idx + 1,
-      product: sku.itemName, // 全部模式下用來顯示哪個品相
+      product: sku.itemName,
       color: sku.color,
       restockStandard,
-      out2025,
-      out2026,
-      stock2026: current,
+      out2025: Math.round(out2025),
+      out2026: totalOutCurYear,
+      stock2026: stockNow,
       deficit,
       needRestock,
       tag: sku.tag
@@ -2340,17 +2362,17 @@ function renderBossReport() {
             ${isAllMode ? '<th>品相 Product</th>' : ''}
             <th>顏色 Color</th>
             <th class="text-right">補貨標準</th>
-            <th class="text-right">2025 出貨</th>
-            <th class="text-right">2026 出貨</th>
-            <th class="text-right">2026 庫存</th>
+            <th class="text-right">${prevYear} 出貨</th>
+            <th class="text-right">${curYear} 出貨</th>
+            <th class="text-right">${curYear} 庫存</th>
             <th class="text-right">庫存-補貨標準</th>
             <th class="text-center">需補貨?</th>
-            <th class="text-center">標記</th>
+            <th class="text-center" style="width:90px;">補貨標準</th>
           </tr></thead>
           <tbody>
             ${displayRows.length === 0 ? `<tr><td colspan="${isAllMode ? 10 : 9}" style="text-align:center; padding:24px; color:var(--text-4);">沒有符合篩選條件的顏色</td></tr>` : displayRows.map(r => `<tr ${r.needRestock ? 'style="background:var(--warn-bg);"' : ''}>
               <td class="mono" style="color:var(--text-4);">${r.idx}</td>
-              ${isAllMode ? `<td class="mono" style="font-size:11px;">${escHtml(r.product)}</td>` : ''}
+              ${isAllMode ? `<td class="mono" style="font-size:11px;">${escHtml(r.product)} ${r.tag ? `<span class="tag tag-warn" style="font-size:9px;">${r.tag}</span>` : ''}</td>` : ''}
               <td><strong>${escHtml(r.color)}</strong></td>
               <td class="text-right mono" style="color:var(--text-3);">${fmtInt(r.restockStandard)}</td>
               <td class="text-right mono" style="color:var(--text-3);">${fmtInt(r.out2025)}</td>
@@ -2358,7 +2380,7 @@ function renderBossReport() {
               <td class="text-right mono" style="font-weight:700; ${r.stock2026 < 0 ? 'color:var(--danger-text);' : ''}">${fmtInt(r.stock2026)}</td>
               <td class="text-right mono" style="${r.deficit < 0 ? 'color:var(--danger-text); font-weight:700;' : ''}">${fmtInt(r.deficit)}</td>
               <td class="text-center" style="font-weight:700; color:${r.needRestock ? 'var(--danger-text)' : 'var(--text-4)'};">${r.needRestock ? '✓' : '—'}</td>
-              <td class="text-center">${r.tag ? `<span class="tag tag-warn">${r.tag}</span>` : ''}</td>
+              <td class="text-center"><button class="btn-ghost btn-icon" data-action="edit-restock" data-product="${escAttr(r.product)}" data-color="${escAttr(r.color)}" title="改補貨標準">✎</button></td>
             </tr>`).join('')}
           </tbody>
           <tfoot>
@@ -2564,11 +2586,8 @@ async function approveRow(rowId) {
     state.masterData[idx] = { ...state.masterData[idx], reviewed: true, product: targetProduct, color: targetColor };
     bumpMasterDataVersion();
   }
-  // 2. 即時把 DOM 那一列移除 (淡出動畫) — 比 full render 快 100 倍
-  tr.style.transition = 'opacity 0.18s, transform 0.18s';
-  tr.style.opacity = '0';
-  tr.style.transform = 'translateX(8px)';
-  setTimeout(() => tr.remove(), 180);
+  // 2. 立即把 DOM 那一列移除 — 不用動畫，最快反應
+  tr.remove();
   // 3. 背景：寫入 Firestore + PAIR mapping
   try {
     await updateDoc(doc(db, ...ROOT, 'master_data', rowId), {
@@ -2689,54 +2708,80 @@ function renderDataManagement() {
     else b.unreviewedCount++;
   });
   const sources = Object.entries(bySource).sort((a,b) => b[1].lastTs - a[1].lastTs);
-  // 使用者自訂的批次顯示名 (存 Firestore settings/batchNames，但本地 mirror 在 state.batchNames)
+  // 使用者自訂的批次顯示名 — key 是 base64 encoded source filename (避開 Firestore __ 限制)
   const batchNames = state.batchNames || {};
+  const getBatchName = (src) => {
+    const safeKey = btoa(unescape(encodeURIComponent(src))).replace(/=/g,'');
+    return batchNames[safeKey];
+  };
+  // 依「資料的最早日期年份」分組 (例：2026年資料 vs 2027年資料)
+  const sourcesByYear = {};
+  sources.forEach(([src, info]) => {
+    const yr = info.firstDate ? String(info.firstDate).split(/[/\-.]/)[0] : '其他';
+    if (!sourcesByYear[yr]) sourcesByYear[yr] = [];
+    sourcesByYear[yr].push([src, info]);
+  });
+  const sortedYears = Object.keys(sourcesByYear).sort((a,b) => b.localeCompare(a)); // 新年份在上
+  // 目前展開的年份 (預設只展開最新年份)
+  const expandedYear = state.dataMgmtExpandedYear || sortedYears[0];
+
+  const renderSourceRow = ([src, info]) => {
+    const customName = getBatchName(src);
+    const dateRange = info.firstDate && info.lastDate
+      ? (info.firstDate === info.lastDate ? info.firstDate : `${info.firstDate} ~ ${info.lastDate}`)
+      : '—';
+    const reviewSummary = info.unreviewedCount > 0
+      ? `<span style="color:var(--warn-text);">⏳ ${info.unreviewedCount} 未審</span> / ${info.reviewedCount} 已審`
+      : `<span style="color:var(--success-text, var(--text-3));">✓ ${info.reviewedCount} 全已審</span>`;
+    return `<tr>
+      <td style="word-break:break-all;">
+        ${customName ? `<div style="font-weight:600; font-size:13px;">${escHtml(customName)}</div><div class="mono" style="font-size:10px; color:var(--text-4);">${escHtml(src)}</div>` : `<div class="mono" style="font-weight:600;">${escHtml(src)}</div>`}
+        <div style="font-size:10px; color:var(--text-3); margin-top:2px;">${reviewSummary}</div>
+      </td>
+      <td class="mono" style="font-size:11px; color:var(--text-2);">${escHtml(dateRange)}</td>
+      <td class="text-right mono">${fmtInt(info.count)}</td>
+      <td class="text-right mono">${fmtInt(info.totalQty)}</td>
+      <td style="font-size:11px; color:var(--text-3);">${[...info.clients].slice(0,6).join(', ')}${info.clients.size > 6 ? '…' : ''}</td>
+      <td class="mono" style="font-size:11px; color:var(--text-3);">${info.lastTs ? new Date(info.lastTs).toLocaleDateString() : '-'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-ghost btn-icon" data-action="rename-batch" data-source="${escAttr(src)}" title="改顯示名稱">✎</button>
+        <button class="btn btn-danger" data-action="delete-source" data-source="${escAttr(src)}" style="padding:3px 8px; font-size:11px;">🗑</button>
+      </td>
+    </tr>`;
+  };
 
   return `<h2>資料管理 Data Management</h2>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-hdr">
-        <span>匯入批次 (${sources.length} 個)</span>
-        <span style="font-size:11px; color:var(--text-4);">點 ✎ 改顯示名 · 點 🗑 批次刪整批</span>
-      </div>
-      <table>
-        <thead><tr>
-          <th>批次 / 來源檔</th>
-          <th>資料日期範圍</th>
-          <th class="text-right">筆數</th>
-          <th class="text-right">總碼數</th>
-          <th>客戶</th>
-          <th>匯入時間</th>
-          <th style="width:140px;"></th>
-        </tr></thead>
-        <tbody>
-          ${sources.length === 0 ? '<tr><td colspan="7" class="empty">尚無資料來源 — 從上方 Import CSV 開始</td></tr>' : ''}
-          ${sources.map(([src, info]) => {
-            const customName = batchNames[src];
-            const dateRange = info.firstDate && info.lastDate
-              ? (info.firstDate === info.lastDate ? info.firstDate : `${info.firstDate} ~ ${info.lastDate}`)
-              : '—';
-            const reviewSummary = info.unreviewedCount > 0
-              ? `<span style="color:var(--warn-text);">⏳ ${info.unreviewedCount} 未審</span> / ${info.reviewedCount} 已審`
-              : `<span style="color:var(--success-text, var(--text-3));">✓ ${info.reviewedCount} 全已審</span>`;
-            return `<tr>
-              <td style="word-break:break-all;">
-                ${customName ? `<div style="font-weight:600; font-size:13px;">${escHtml(customName)}</div><div class="mono" style="font-size:10px; color:var(--text-4);">${escHtml(src)}</div>` : `<div class="mono" style="font-weight:600;">${escHtml(src)}</div>`}
-                <div style="font-size:10px; color:var(--text-3); margin-top:2px;">${reviewSummary}</div>
-              </td>
-              <td class="mono" style="font-size:11px; color:var(--text-2);">${escHtml(dateRange)}</td>
-              <td class="text-right mono">${fmtInt(info.count)}</td>
-              <td class="text-right mono">${fmtInt(info.totalQty)}</td>
-              <td style="font-size:11px; color:var(--text-3);">${[...info.clients].slice(0,6).join(', ')}${info.clients.size > 6 ? '…' : ''}</td>
-              <td class="mono" style="font-size:11px; color:var(--text-3);">${info.lastTs ? new Date(info.lastTs).toLocaleDateString() : '-'}</td>
-              <td style="white-space:nowrap;">
-                <button class="btn-ghost btn-icon" data-action="rename-batch" data-source="${escAttr(src)}" title="改顯示名稱">✎</button>
-                <button class="btn btn-danger" data-action="delete-source" data-source="${escAttr(src)}" style="padding:3px 8px; font-size:11px;">🗑</button>
-              </td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
+    ${sources.length === 0 ? `<div class="card" style="padding:40px; text-align:center; color:var(--text-3);">尚無資料來源 — 從上方 Import CSV 開始</div>` : ''}
+    ${sortedYears.map(yr => {
+      const yrSources = sourcesByYear[yr];
+      const isExpanded = yr === expandedYear;
+      const totalCount = yrSources.reduce((s, [, info]) => s + info.count, 0);
+      const totalQty = yrSources.reduce((s, [, info]) => s + info.totalQty, 0);
+      const unreviewed = yrSources.reduce((s, [, info]) => s + info.unreviewedCount, 0);
+      return `<div class="card" style="margin-bottom:14px;">
+        <div class="card-hdr" data-action="toggle-year" data-year="${escAttr(yr)}" style="cursor:pointer; user-select:none;">
+          <span style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:13px;">${isExpanded ? '▼' : '▶'}</span>
+            <strong style="font-size:15px;">${escHtml(yr)} 年資料</strong>
+            <span style="font-size:11px; color:var(--text-4);">${yrSources.length} 批 · ${fmtInt(totalCount)} 筆 · ${fmtInt(totalQty)} Y${unreviewed > 0 ? ` · <span style="color:var(--warn-text);">⏳ ${unreviewed} 未審</span>` : ''}</span>
+          </span>
+        </div>
+        ${isExpanded ? `<table>
+          <thead><tr>
+            <th>批次 / 來源檔</th>
+            <th>資料日期範圍</th>
+            <th class="text-right">筆數</th>
+            <th class="text-right">總碼數</th>
+            <th>客戶</th>
+            <th>匯入時間</th>
+            <th style="width:140px;"></th>
+          </tr></thead>
+          <tbody>
+            ${yrSources.map(renderSourceRow).join('')}
+          </tbody>
+        </table>` : ''}
+      </div>`;
+    }).join('')}
     <div class="card" style="padding:18px;">
       <h3 style="font-size:14px; margin-bottom:10px;">📥 統一 CSV 匯入格式（出貨 + 進貨同一張表）</h3>
       <p style="font-size:12px; color:var(--text-3); margin-bottom:12px; line-height:1.6;">
@@ -3753,9 +3798,11 @@ document.addEventListener('click', async (e) => {
       if (newName === null) break; // 取消
       const trimmed = newName.trim();
       try {
+        // Firestore 不允許 field name 以 __ 開頭/結尾，用 base64 安全 key 編碼
+        const safeKey = btoa(unescape(encodeURIComponent(src))).replace(/=/g,'');
         const newBatchNames = { ...(state.batchNames || {}) };
-        if (trimmed) newBatchNames[src] = trimmed;
-        else delete newBatchNames[src]; // 空白 → 移除自訂名
+        if (trimmed) newBatchNames[safeKey] = trimmed;
+        else delete newBatchNames[safeKey];
         await setDoc(doc(db, ...ROOT, 'settings', 'batchNames'), newBatchNames, { merge: false });
         state.batchNames = newBatchNames;
         render();
@@ -3817,34 +3864,28 @@ document.addEventListener('click', async (e) => {
       break;
     }
     case 'export-needs-review': {
-      // 收集所有 unmapped 列，輸出成 CSV 給泰國
-      const lines = ['CSV 品名,CSV 顏色,筆數,總碼數,客戶,來源檔,範例日期'];
-      const grouped = {};
-      state.masterData.forEach(d => {
-        const rawP = d.rawProduct || d.product || '';
-        const rawC = d.rawColor || d.color || '';
-        const normP = normalizeProductName(rawP).toUpperCase();
-        const normC = normalizeColorName(rawC, rawP).toUpperCase();
-        const ok = MASTER_INVENTORY.some(s => s.itemName.toUpperCase() === normP && s.color.toUpperCase() === normC);
-        if (!ok) {
-          const k = `${d.rawProduct || d.product || ''}||${d.rawColor || d.color || ''}`;
-          if (!grouped[k]) grouped[k] = { rawProduct: d.rawProduct || d.product, rawColor: d.rawColor || d.color, count:0, totalQty:0, clients: new Set(), sources: new Set(), dates: new Set() };
-          const g = grouped[k];
-          g.count++;
-          g.totalQty += (d.shippedQty || 0);
-          if (d.client) g.clients.add(d.client);
-          if (d.source) g.sources.add(d.source);
-          if (d.date) g.dates.add(d.date);
-        }
-      });
-      Object.values(grouped).sort((a,b) => b.count - a.count).forEach(g => {
-        lines.push([`"${g.rawProduct||''}"`, `"${g.rawColor||''}"`, g.count, g.totalQty, `"${[...g.clients].join(';')}"`, `"${[...g.sources].slice(0,3).join(';')}"`, `"${[...g.dates].sort()[0] || ''}"`].join(','));
+      // 只匯出「目前未審核」的列 — 每一筆獨立一行，給泰國對照原始日期/客戶/櫃號
+      const unreviewed = state.masterData.filter(d => !isReviewed(d));
+      if (!unreviewed.length) { alert('目前沒有未審核的列可匯出'); break; }
+      const lines = ['日期,客戶,櫃號,CSV 品名,CSV 顏色,碼數,訂單號,來源檔'];
+      unreviewed.forEach(d => {
+        lines.push([
+          `"${d.date || ''}"`,
+          `"${d.client || ''}"`,
+          `"${d.cabinetNo || ''}"`,
+          `"${d.rawProduct || d.product || ''}"`,
+          `"${d.rawColor || d.color || ''}"`,
+          d.shippedQty || 0,
+          `"${d.orderNo || ''}"`,
+          `"${d.source || ''}"`
+        ].join(','));
       });
       const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `待澄清清單_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `待澄清未審清單_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
+      alert(`✓ 已匯出 ${unreviewed.length} 筆未審核列`);
       break;
     }
     case 'approve-row': {
@@ -3941,6 +3982,39 @@ document.addEventListener('click', async (e) => {
       } catch (e) { alert('失敗：' + e.message); }
       break;
     }
+    case 'toggle-year': {
+      const yr = t.dataset.year;
+      state.dataMgmtExpandedYear = (state.dataMgmtExpandedYear === yr) ? null : yr;
+      render();
+      break;
+    }
+    case 'edit-restock': {
+      const product = t.dataset.product;
+      const color = t.dataset.color;
+      const key = `${product}||${color}`;
+      const current = state.restockStandards?.[key];
+      // 找 MASTER 預設值 (沒被使用者改過時用這個)
+      const sku = getEffectiveInventory().find(s => s.itemName === product && s.color === color);
+      const masterDefault = sku ? (sku.recommendedRestock || sku.safetyLevel || 0) : 0;
+      const displayCurrent = current != null ? current : masterDefault;
+      const newVal = prompt(`${product} / ${color}\n補貨標準（碼數）：\n\n預設：${masterDefault}\n目前：${displayCurrent}\n\n填數字儲存；填「reset」恢復預設`, String(displayCurrent));
+      if (newVal === null) break;
+      const trimmed = newVal.trim();
+      try {
+        const newStds = { ...(state.restockStandards || {}) };
+        if (trimmed.toLowerCase() === 'reset' || trimmed === '') {
+          delete newStds[key];
+        } else {
+          const n = parseInt(trimmed.replace(/[^\d]/g, ''));
+          if (isNaN(n) || n < 0) { alert('請輸入正整數'); break; }
+          newStds[key] = n;
+        }
+        await setDoc(doc(db, ...ROOT, 'settings', 'restockStandards'), newStds, { merge: false });
+        state.restockStandards = newStds;
+        render();
+      } catch (e) { alert('儲存失敗：' + e.message); }
+      break;
+    }
     case 'boss-set-filter': {
       const f = t.dataset.filter;
       if (f === 'all') state.bossFilter = null;
@@ -3954,19 +4028,22 @@ document.addEventListener('click', async (e) => {
       const eff = getEffectiveInventory();
       const focusSkus = isAll ? eff : eff.filter(s => s.itemName === focus);
       const today = new Date().toISOString().split('T')[0];
+      const yr = new Date().getFullYear();
       const lines = isAll
-        ? ['#,品相,顏色,補貨標準,2025出貨,2026出貨,2026庫存,庫存-補貨標準,需補貨']
-        : ['#,顏色,補貨標準,2025出貨,2026出貨,2026庫存,庫存-補貨標準,需補貨'];
+        ? [`#,品相,顏色,補貨標準,${yr-1}出貨,${yr}出貨,${yr}庫存,庫存-補貨標準,需補貨`]
+        : [`#,顏色,補貨標準,${yr-1}出貨,${yr}出貨,${yr}庫存,庫存-補貨標準,需補貨`];
+      // 統一 round 為整數，避免浮點數小數導致 CSV 看起來亂碼
+      const intF = (n) => Math.round(Number(n) || 0);
       focusSkus.forEach((sku, idx) => {
         const ships = getShipmentsFor(sku.itemName, sku.color);
-        const out26 = Math.max(ships.filter(s => (s.date||'').startsWith('2026')).reduce((a,b)=>a+(b.shippedQty||0),0), sku.out2026 || 0);
-        const cur = (sku.init2026 || 0) - out26;
-        const safety = sku.safetyLevel || 0;
-        const std = sku.recommendedRestock || safety;
+        const out26 = Math.max(ships.filter(s => (s.date||'').startsWith(String(yr))).reduce((a,b)=>a+(Number(b.shippedQty)||0),0), Number(sku.out2026) || 0);
+        const cur = (Number(sku.init2026) || 0) - out26;
+        const safety = Number(sku.safetyLevel) || 0;
+        const std = Number(sku.recommendedRestock) || safety;
         const deficit = cur - safety;
         const row = isAll
-          ? [idx+1, `"${sku.itemName}"`, `"${sku.color}"`, std, sku.out2025 || 0, out26, cur, deficit, deficit < 0 ? 'YES' : 'NO']
-          : [idx+1, `"${sku.color}"`, std, sku.out2025 || 0, out26, cur, deficit, deficit < 0 ? 'YES' : 'NO'];
+          ? [idx+1, `"${sku.itemName}"`, `"${sku.color}"`, intF(std), intF(sku.out2025), intF(out26), intF(cur), intF(deficit), deficit < 0 ? 'YES' : 'NO']
+          : [idx+1, `"${sku.color}"`, intF(std), intF(sku.out2025), intF(out26), intF(cur), intF(deficit), deficit < 0 ? 'YES' : 'NO'];
         lines.push(row.join(','));
       });
       const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -4252,6 +4329,13 @@ onAuthStateChanged(auth, (u) => {
   onSnapshot(doc(db, ...ROOT, 'settings', 'batchNames'), (snap) => {
     if (snap.exists()) {
       state.batchNames = snap.data() || {};
+      render();
+    }
+  });
+  // 使用者自訂補貨標準
+  onSnapshot(doc(db, ...ROOT, 'settings', 'restockStandards'), (snap) => {
+    if (snap.exists()) {
+      state.restockStandards = snap.data() || {};
       render();
     }
   });
