@@ -2259,6 +2259,40 @@ function renderHiddenPdfCaptures() {
 // 對照雲端「0517回報老闆補貨」格式：項次 / 顏色 / 2025出貨 / 2026出貨 /
 // 2026庫存 / 庫存-補貨標準 / 已下訂單 / 是否補貨 / 補貨建議
 // ============================================================================
+// 計算回報老闆每一列的數據 — render 跟 CSV 匯出共用，保證一致
+function computeBossRow(sku, curYear, prevYear) {
+  const customRestock = state.restockStandards || {};
+  const restockKey = `${sku.itemName}||${sku.color}`;
+  const outgoing = getOutgoingFor(sku.itemName, sku.color);
+  const incoming = getIncomingFor(sku.itemName, sku.color);
+  const outPrevYear = outgoing.filter(s => (s.date || '').startsWith(String(prevYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
+  const outCurYear = outgoing.filter(s => (s.date || '').startsWith(String(curYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
+  const inCurYear = incoming.filter(s => (s.date || '').startsWith(String(curYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
+  const csvPrevOut = (curYear === 2026) ? getOut2025(sku.itemName, sku.color) : 0;
+  const out2025 = Math.max(outPrevYear, csvPrevOut);
+  const csvOut = Number(sku.out2026) || 0;
+  const csvCurrent = Number(sku.current2026) || 0;
+  // 即時庫存：CSV 快照 + 流水增減
+  const stockNow = Math.round(csvCurrent + inCurYear - Math.max(0, outCurYear - csvOut));
+  const totalOutCurYear = Math.round(Math.max(csvOut, outCurYear));
+  const userStd = customRestock[restockKey];
+  const safety = Number(sku.safetyLevel) || 0;
+  const restockStandard = userStd != null ? Number(userStd) : (Number(sku.recommendedRestock) || safety);
+  const deficit = stockNow - safety;
+  const needRestock = stockNow < restockStandard;
+  return {
+    product: sku.itemName,
+    color: sku.color,
+    restockStandard,
+    out2025: Math.round(out2025),
+    out2026: totalOutCurYear,
+    stock2026: stockNow,
+    deficit,
+    needRestock,
+    tag: sku.tag
+  };
+}
+
 function renderBossReport() {
   const todayDisplay = `${new Date().getMonth()+1}月${new Date().getDate()}日`;
   // 預設「全部品相」總覽 — 一進入頁面就看到所有需要補貨的品相
@@ -2276,48 +2310,7 @@ function renderBossReport() {
   //     2027 年看到 2026出貨 / 2027出貨 / 2027庫存
   const curYear = new Date().getFullYear();
   const prevYear = curYear - 1;
-  // 使用者自訂的補貨標準 (存 Firestore) — 覆蓋 MASTER 內預設值
-  const customRestock = state.restockStandards || {};
-  const restockKey = (item, color) => `${item}||${color}`;
-
-  // 計算每個顏色的即時數據 (用流水算，不依賴 CSV 快照)
-  const rows = focusSkus.map((sku, idx) => {
-    const outgoing = getOutgoingFor(sku.itemName, sku.color);
-    const incoming = getIncomingFor(sku.itemName, sku.color);
-    const outPrevYear = outgoing.filter(s => (s.date || '').startsWith(String(prevYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
-    const outCurYear = outgoing.filter(s => (s.date || '').startsWith(String(curYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
-    const inCurYear = incoming.filter(s => (s.date || '').startsWith(String(curYear))).reduce((a,b) => a + (Number(b.shippedQty) || 0), 0);
-    // 比對 CSV 內 prevYear 出貨 (從 OUT2025_RAW 來) — 為了顯示連續性
-    const csvPrevOut = (curYear === 2026) ? getOut2025(sku.itemName, sku.color) : 0;
-    const out2025 = Math.max(outPrevYear, csvPrevOut);
-    // CSV 快照 (僅當 2026 年用)
-    const init = Number(sku.init2026) || 0;
-    const csvOut = Number(sku.out2026) || 0;
-    const csvCurrent = Number(sku.current2026) || 0;
-    // 即時庫存：CSV 快照 + 流水增減
-    // (CSV current2026 已是「截至匯出時」剩餘，再加上之後的流水)
-    const stockNow = Math.round(csvCurrent + inCurYear - Math.max(0, outCurYear - csvOut));
-    // 出貨總計 (CSV 內已扣 + 流水額外扣)
-    const totalOutCurYear = Math.round(Math.max(csvOut, outCurYear));
-    // 補貨標準：先看使用者自訂的，否則用 MASTER 預設
-    const userStd = customRestock[restockKey(sku.itemName, sku.color)];
-    const safety = Number(sku.safetyLevel) || 0;
-    const restockStandard = userStd != null ? Number(userStd) : (Number(sku.recommendedRestock) || safety);
-    const deficit = stockNow - safety;
-    const needRestock = stockNow < restockStandard;
-    return {
-      idx: idx + 1,
-      product: sku.itemName,
-      color: sku.color,
-      restockStandard,
-      out2025: Math.round(out2025),
-      out2026: totalOutCurYear,
-      stock2026: stockNow,
-      deficit,
-      needRestock,
-      tag: sku.tag
-    };
-  });
+  const rows = focusSkus.map((sku, idx) => ({ idx: idx + 1, ...computeBossRow(sku, curYear, prevYear) }));
 
   // 統計 (永遠基於全部 rows)
   const totalSku = rows.length;
@@ -4023,27 +4016,23 @@ document.addEventListener('click', async (e) => {
       break;
     }
     case 'boss-export-csv': {
-      const focus = state.bossFocus || 'C4';
+      // 預設「全部品相」(跟 render 一致) — 之前 fallback 是 C4 導致匯出只剩 C4
+      const focus = state.bossFocus || '__ALL__';
       const isAll = focus === '__ALL__';
       const eff = getEffectiveInventory();
       const focusSkus = isAll ? eff : eff.filter(s => s.itemName === focus);
       const today = new Date().toISOString().split('T')[0];
-      const yr = new Date().getFullYear();
+      const curYear = new Date().getFullYear();
+      const prevYear = curYear - 1;
       const lines = isAll
-        ? [`#,品相,顏色,補貨標準,${yr-1}出貨,${yr}出貨,${yr}庫存,庫存-補貨標準,需補貨`]
-        : [`#,顏色,補貨標準,${yr-1}出貨,${yr}出貨,${yr}庫存,庫存-補貨標準,需補貨`];
-      // 統一 round 為整數，避免浮點數小數導致 CSV 看起來亂碼
-      const intF = (n) => Math.round(Number(n) || 0);
+        ? [`#,品相,顏色,標籤,補貨標準,${prevYear}出貨,${curYear}出貨,${curYear}庫存,庫存-補貨標準,需補貨`]
+        : [`#,顏色,補貨標準,${prevYear}出貨,${curYear}出貨,${curYear}庫存,庫存-補貨標準,需補貨`];
+      // 使用 render 用的同一個計算函數 — 保證螢幕跟 CSV 數字一致
       focusSkus.forEach((sku, idx) => {
-        const ships = getShipmentsFor(sku.itemName, sku.color);
-        const out26 = Math.max(ships.filter(s => (s.date||'').startsWith(String(yr))).reduce((a,b)=>a+(Number(b.shippedQty)||0),0), Number(sku.out2026) || 0);
-        const cur = (Number(sku.init2026) || 0) - out26;
-        const safety = Number(sku.safetyLevel) || 0;
-        const std = Number(sku.recommendedRestock) || safety;
-        const deficit = cur - safety;
+        const r = computeBossRow(sku, curYear, prevYear);
         const row = isAll
-          ? [idx+1, `"${sku.itemName}"`, `"${sku.color}"`, intF(std), intF(sku.out2025), intF(out26), intF(cur), intF(deficit), deficit < 0 ? 'YES' : 'NO']
-          : [idx+1, `"${sku.color}"`, intF(std), intF(sku.out2025), intF(out26), intF(cur), intF(deficit), deficit < 0 ? 'YES' : 'NO'];
+          ? [idx+1, `"${r.product}"`, `"${r.color}"`, `"${r.tag || ''}"`, r.restockStandard, r.out2025, r.out2026, r.stock2026, r.deficit, r.needRestock ? 'YES' : 'NO']
+          : [idx+1, `"${r.color}"`, r.restockStandard, r.out2025, r.out2026, r.stock2026, r.deficit, r.needRestock ? 'YES' : 'NO'];
         lines.push(row.join(','));
       });
       const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
