@@ -225,9 +225,6 @@ tbody td { padding: 10px 12px; color: var(--text-2); }
   .sa-grid { grid-template-columns: 1fr; }
 }
 
-/* Animations */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-.fade-in { animation: fadeIn 0.3s ease-out; }
 </style>
 </head>
 <body>
@@ -1374,7 +1371,6 @@ function render() {
   else if (state.view === 'printAll')  html = renderPrintAll();
   else if (state.view === 'settings')  html = renderSettings();
   main.innerHTML = html;
-  main.classList.remove('fade-in'); void main.offsetWidth; main.classList.add('fade-in');
   updateSyncDot();
   populateFilters();
   // 注意：renderHiddenPdfCaptures() 從這裡移除 — 它會把所有 invoice 的 HTML 全部產生一遍，
